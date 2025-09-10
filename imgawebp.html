@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Branding Tool</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent: #4a90e2;
+      --bg: #fdfdfd;
+      --fg: #333;
+      --card: #fff;
+      --border: #ccc;
+    }
+    /* Dark mode overrides */
+    .dark-mode {
+      --bg: #1e1e1e;
+      --fg: #f0f0f0;
+      --card: #2c2c2c;
+      --border: #444;
+      --accent: #82cfff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      transition: background .3s, color .3s;
+    }
+    h2 {
+      text-align: center;
+      margin: 1rem 0;
+      color: var(--accent);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      padding: 0 1rem 1rem;
+    }
+    .drop-zone {
+      flex: 1 1 200px;
+      min-height: 80px;
+      border: 2px dashed var(--accent);
+      border-radius: 8px;
+      background: #f0f8ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: .5rem;
+      cursor: pointer;
+      transition: background .3s, border-color .3s;
+    }
+    .dark-mode .drop-zone { background: #333844; }
+    .drop-zone.dragover { background: #e0f0ff; }
+    input[type="file"] { display: none; }
+    .controls input[type="number"],
+    .controls select {
+      width: 120px;
+      padding: .4rem;
+      border: 2px dashed var(--accent);
+      border-radius: 8px;
+      text-align: center;
+      background: var(--card);
+      color: var(--fg);
+      cursor: pointer;
+      transition: background .3s, border-color .3s, color .3s;
+    }
+    .controls button {
+      padding: .6rem 1.2rem;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .controls button:hover { background: #357ab8; }
+    .controls .quality,
+    .controls .format,
+    .controls .group {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .controls .group { flex-direction: column; }
+    .controls .quality input[type="range"] { width: 120px; }
+    #thumbsBase,
+    #thumbsOverlay {
+      display: flex;
+      gap: .5rem;
+      padding: 0 1rem 1rem;
+      overflow-x: auto;
+      max-width: 90vw;
+    }
+    .thumb {
+      position: relative;
+      width: 60px;
+      height: 60px;
+      border: 2px solid transparent;
+      border-radius: 4px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color .3s;
+    }
+    .thumb.selected { border-color: var(--accent); }
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .thumb .delete {
+      position: absolute;
+      top: 2px; right: 2px;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      width: 16px; height: 16px;
+      font-size: 12px;
+      line-height: 16px;
+      text-align: center;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    #canvasWrapper {
+      flex: 1;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+      overflow: auto;
+    }
+    canvas {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      max-width: 90vw;
+      max-height: 80vh;
+      transition: background .3s, border-color .3s;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Branding Tool</h2>
+
+  <div class="controls">
+    <button id="btnDarkMode">🌙 Modo Oscuro</button>
+
+    <div class="drop-zone" id="dropBase">
+      📁 Arrastra o haz clic para subir<br>Imágenes Base
+    </div>
+    <input type="file" id="baseImage" accept="image/*" multiple>
+
+    <div class="drop-zone" id="dropOverlay">
+      📁 Arrastra o haz clic para subir<br>Imágenes a implementar
+    </div>
+    <input type="file" id="overlayImages" accept="image/*" multiple>
+
+    <div class="group">
+      <label>📐 Resolución</label>
+      <input type="number" id="targetWidth" placeholder="Ancho px">
+      <input type="number" id="targetHeight" placeholder="Alto px">
+      <label><input type="checkbox" id="cropToggle"> Recortar (cover)</label>
+    </div>
+
+    <div class="quality">
+      <label for="qualityRange">Calidad</label>
+      <input type="range" id="qualityRange" min="1" max="100" value="80">
+      <span id="qualityValue">80</span>%
+    </div>
+
+    <div class="format">
+      <label for="formatSelect">Formato</label>
+      <select id="formatSelect">
+        <option value="webp">WebP</option>
+        <option value="png">PNG</option>
+        <option value="jpeg">JPEG</option>
+      </select>
+    </div>
+
+    <button id="btnReset">🔄 Reset</button>
+    <button id="btnExportAll">🚀 Exportar</button>
+    <button id="btnExportZip">🗜️ Exportar ZIP</button>
+  </div>
+
+  <div id="thumbsBase"></div>
+  <div id="thumbsOverlay"></div>
+
+  <div id="canvasWrapper">
+    <canvas id="previewCanvas"></canvas>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script>
+    // DOM refs
+    const body          = document.body;
+    const btnDarkMode   = document.getElementById('btnDarkMode');
+    const canvas        = document.getElementById('previewCanvas');
+    const ctx           = canvas.getContext('2d');
+    const dropBase      = document.getElementById('dropBase');
+    const baseInput     = document.getElementById('baseImage');
+    const dropOverlay   = document.getElementById('dropOverlay');
+    const overlayInput  = document.getElementById('overlayImages');
+    const targetW       = document.getElementById('targetWidth');
+    const targetH       = document.getElementById('targetHeight');
+    const cropToggle    = document.getElementById('cropToggle');
+    const qualityRange  = document.getElementById('qualityRange');
+    const qualityValue  = document.getElementById('qualityValue');
+    const formatSelect  = document.getElementById('formatSelect');
+    const btnReset      = document.getElementById('btnReset');
+    const btnExportAll  = document.getElementById('btnExportAll');
+    const btnExportZip  = document.getElementById('btnExportZip');
+    const thumbsBase    = document.getElementById('thumbsBase');
+    const thumbsOverlay = document.getElementById('thumbsOverlay');
+
+    // State
+    let baseFiles        = [];
+    let previewIndex     = 0;
+    let previewBaseImage = null;
+    let logoConfigs      = []; // { img, x, y, w, h, aspect }
+    let isDragging       = false;
+    let isResizing       = false;
+    let activeIndex      = -1;
+    let offsetX          = 0;
+    let offsetY          = 0;
+    const handleSize     = 10;
+
+    // Dark mode toggle
+    btnDarkMode.addEventListener('click', () => {
+      body.classList.toggle('dark-mode');
+      btnDarkMode.textContent = body.classList.contains('dark-mode')
+        ? '☀️ Modo Claro'
+        : '🌙 Modo Oscuro';
+    });
+
+    // Drop-zone setup
+    function setupDrop(zone, input, handler) {
+      zone.addEventListener('click', () => input.click());
+      ['dragenter','dragover'].forEach(evt =>
+        zone.addEventListener(evt, e => { e.preventDefault(); zone.classList.add('dragover'); })
+      );
+      ['dragleave','drop'].forEach(evt =>
+        zone.addEventListener(evt, e => {
+          e.preventDefault();
+          zone.classList.remove('dragover');
+          if (evt==='drop' && e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            handler();
+          }
+        })
+      );
+      input.addEventListener('change', handler);
+    }
+    setupDrop(dropBase, baseInput, onBaseChange);
+    setupDrop(dropOverlay, overlayInput, onOverlayChange);
+
+    // Paste support
+    document.addEventListener('paste', e => {
+      for (let item of e.clipboardData.items) {
+        if (item.type.startsWith('image')) {
+          const blob = item.getAsFile();
+          baseFiles = [blob];
+          previewIndex = 0;
+          updateBaseThumbnails();
+          loadBaseImage(0);
+          break;
+        }
+      }
+    });
+
+    // Base image handlers
+    function onBaseChange() {
+      baseFiles = Array.from(baseInput.files);
+      previewIndex = 0;
+      updateBaseThumbnails();
+      if (baseFiles.length) loadBaseImage(0);
+    }
+    function updateBaseThumbnails() {
+      thumbsBase.innerHTML = '';
+      baseFiles.forEach((file, i) => {
+        const url = URL.createObjectURL(file);
+        const div = document.createElement('div');
+        div.className = 'thumb' + (i===previewIndex ? ' selected':'');
+        const img = document.createElement('img');
+        img.src = url;
+        img.onclick = () => {
+          previewIndex = i;
+          document.querySelectorAll('#thumbsBase .thumb')
+            .forEach((el, idx) => el.classList.toggle('selected', idx===i));
+          loadBaseImage(i);
+        };
+        const del = document.createElement('span');
+        del.className = 'delete';
+        del.innerText = '×';
+        del.onclick = e => {
+          e.stopPropagation();
+          baseFiles.splice(i,1);
+          if (previewIndex >= baseFiles.length) previewIndex = baseFiles.length-1;
+          updateBaseThumbnails();
+          if (baseFiles.length) loadBaseImage(previewIndex);
+          else {
+            previewBaseImage = null;
+            logoConfigs = [];
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+          }
+        };
+        div.appendChild(img);
+        div.appendChild(del);
+        thumbsBase.appendChild(div);
+      });
+    }
+    function loadBaseImage(idx) {
+      loadImage(baseFiles[idx], img => {
+        previewBaseImage = img;
+        logoConfigs = [];
+        updateOverlayThumbnails();
+        resizeCanvas();
+        drawPreview();
+      });
+    }
+
+    // Overlay handlers
+    function onOverlayChange() {
+      Array.from(overlayInput.files).forEach(file => {
+        loadImage(file, img => {
+          const scale = Math.min(200/img.width, 200/img.height, 1);
+          const w = img.width*scale;
+          const h = w * (img.height/img.width);
+          logoConfigs.push({ img, x:20, y:20, w, h, aspect: h/w });
+          updateOverlayThumbnails();
+          drawPreview();
+        });
+      });
+    }
+    function updateOverlayThumbnails() {
+      thumbsOverlay.innerHTML = '';
+      logoConfigs.forEach((cfg, i) => {
+        const div = document.createElement('div');
+        div.className = 'thumb';
+        const img = document.createElement('img');
+        img.src = cfg.img.src;
+        div.onclick = () => { /* future selection if needed */ };
+        const del = document.createElement('span');
+        del.className = 'delete';
+        del.innerText = '×';
+        del.onclick = e => {
+          e.stopPropagation();
+          logoConfigs.splice(i,1);
+          updateOverlayThumbnails();
+          drawPreview();
+        };
+        div.appendChild(img);
+        div.appendChild(del);
+        thumbsOverlay.appendChild(div);
+      });
+    }
+
+    // Utility: File → Image
+    function loadImage(file, cb) {
+      const r = new FileReader();
+      r.onload = () => {
+        const img = new Image();
+        img.onload = () => cb(img);
+        img.src = r.result;
+      };
+      r.readAsDataURL(file);
+    }
+
+    // Resize canvas
+    function resizeCanvas() {
+      if (!previewBaseImage) return;
+      const w = parseInt(targetW.value) || previewBaseImage.width;
+      const h = parseInt(targetH.value) || previewBaseImage.height;
+      canvas.width  = w;
+      canvas.height = h;
+    }
+
+    // Map mouse to canvas coords
+    function getMousePos(e) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (e.clientX - rect.left) * (canvas.width/rect.width),
+        y: (e.clientY - rect.top) * (canvas.height/rect.height)
+      };
+    }
+
+    // Draw base + overlays
+    function drawPreview() {
+      if (!previewBaseImage) return;
+      resizeCanvas();
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      // draw base
+      const scale = cropToggle.checked
+        ? Math.max(canvas.width/previewBaseImage.width, canvas.height/previewBaseImage.height)
+        : Math.min(canvas.width/previewBaseImage.width, canvas.height/previewBaseImage.height);
+      const sw = previewBaseImage.width * scale;
+      const sh = previewBaseImage.height * scale;
+      const ox = (canvas.width - sw)/2;
+      const oy = (canvas.height - sh)/2;
+      ctx.drawImage(previewBaseImage, ox, oy, sw, sh);
+      // draw overlays + handles
+      logoConfigs.forEach(cfg => {
+        ctx.drawImage(cfg.img, cfg.x, cfg.y, cfg.w, cfg.h);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(
+          cfg.x+cfg.w-handleSize,
+          cfg.y+cfg.h-handleSize,
+          handleSize, handleSize
+        );
+      });
+    }
+
+    // Mouse interactions
+    canvas.addEventListener('mousedown', e => {
+      if (!previewBaseImage) return;
+      const { x: mx, y: my } = getMousePos(e);
+      // resize
+      for (let i=logoConfigs.length-1; i>=0; i--) {
+        const cfg=logoConfigs[i];
+        const hx=cfg.x+cfg.w-handleSize, hy=cfg.y+cfg.h-handleSize;
+        if (mx>=hx && mx<=hx+handleSize && my>=hy && my<=hy+handleSize) {
+          const [item]=logoConfigs.splice(i,1);
+          logoConfigs.push(item);
+          activeIndex=logoConfigs.length-1;
+          isResizing=true;
+          return;
+        }
+      }
+      // drag
+      for (let i=logoConfigs.length-1; i>=0; i--) {
+        const cfg=logoConfigs[i];
+        if (mx>=cfg.x && mx<=cfg.x+cfg.w && my>=cfg.y && my<=cfg.y+cfg.h) {
+          const [item]=logoConfigs.splice(i,1);
+          logoConfigs.push(item);
+          activeIndex=logoConfigs.length-1;
+          isDragging=true;
+          offsetX=mx-item.x;
+          offsetY=my-item.y;
+          return;
+        }
+      }
+    });
+    document.addEventListener('mousemove', e => {
+      if (activeIndex<0) return;
+      const { x: mx, y: my } = getMousePos(e);
+      const cfg = logoConfigs[activeIndex];
+      if (isDragging) {
+        cfg.x = mx-offsetX;
+        cfg.y = my-offsetY;
+        drawPreview();
+      } else if (isResizing) {
+        const newW = Math.max(20, mx-cfg.x);
+        cfg.w = newW;
+        cfg.h = newW * cfg.aspect;
+        drawPreview();
+      }
+    });
+    function endInteraction() {
+      isDragging=false;
+      isResizing=false;
+      activeIndex=-1;
+    }
+    canvas.addEventListener('mouseup',   endInteraction);
+    canvas.addEventListener('mouseleave',endInteraction);
+    document.addEventListener('mouseup', endInteraction);
+
+    // Controls
+    targetW.oninput     = drawPreview;
+    targetH.oninput     = drawPreview;
+    cropToggle.onchange = drawPreview;
+    qualityRange.oninput= () => qualityValue.innerText=qualityRange.value;
+    btnReset.onclick    = () => {
+      baseFiles=[]; previewIndex=0; previewBaseImage=null;
+      logoConfigs=[]; baseInput.value='';
+      overlayInput.value=''; thumbsBase.innerHTML='';
+      thumbsOverlay.innerHTML=''; drawPreview();
+    };
+
+    // Generate timestamp string
+    function getTimestamp() {
+      const now = new Date();
+      const pad = n => n<10? '0'+n : n;
+      return `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_` +
+             `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    }
+
+    // Export / ZIP
+    async function exportAll(asZip) {
+      if (!baseFiles.length) return alert('Sube al menos una imagen base.');
+      const q    = qualityRange.value / 100;
+      const f    = formatSelect.value;
+      const mime = f==='png'  ? 'image/png'
+                 : f==='jpeg'? 'image/jpeg'
+                 :               'image/webp';
+      const ts   = getTimestamp();
+      const zip  = new JSZip();
+
+      for (let i=0; i<baseFiles.length; i++) {
+        await new Promise(res => loadImage(baseFiles[i], img => {
+          previewBaseImage=img;
+          resizeCanvas();
+          drawPreview();
+          setTimeout(res,50);
+        }));
+        const blob = await new Promise(res =>
+          canvas.toBlob(res, mime, f==='png'?undefined:q)
+        );
+        const name = baseFiles.length>1
+          ? `${ts}_${i+1}.${f}`
+          : `${ts}.${f}`;
+        if (asZip) zip.file(name, blob);
+        else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href    = url;
+          a.download= name;
+          a.click();
+        }
+      }
+
+      if (asZip) {
+        const content = await zip.generateAsync({type:'blob'});
+        saveAs(content, `${ts}.zip`);
+      }
+    }
+
+    btnExportAll.onclick = () => exportAll(false);
+    btnExportZip.onclick = () => exportAll(true);
+  </script>
+</body>
+</html>

@@ -8,6 +8,7 @@
     <!-- Scripts externos CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
         * {
@@ -1881,6 +1882,7 @@
                 <button class="tab" onclick="switchTab('sucursales')">🚚 Sucursales</button>
                 <button class="tab" onclick="switchTab('historial')">🕓 Historial</button>
                 <button class="tab" onclick="switchTab('productos')">📦 Productos</button>
+                <button class="tab" onclick="switchTab('kardex')">📊 Kardex</button>
                 <button class="tab" onclick="switchTab('gestionsucursales')">🏢 Gestión Sucursales</button>
                 <button class="tab" onclick="switchTab('fichas')">📄 Fichas Técnicas</button>
             </div>
@@ -2076,6 +2078,34 @@
                             </tr>
                         </thead>
                         <tbody id="productListBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB: KARDEX (STOCK DESDE DROPBOX) -->
+            <div class="tab-content" id="tab-kardex">
+                <div class="new-form-section">
+                    <h3>📊 Kardex de Stock (Dropbox)</h3>
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+                        <button type="button" id="btnActualizarStock" class="btn btn-success" onclick="cargarKardex(true)">🔄 Actualizar desde Dropbox</button>
+                        <div id="kardexUltimaActualizacion" style="color:white;font-size:0.85em;opacity:0.85;"></div>
+                    </div>
+                    <input type="text" class="form-input" id="kardexSearchInput" placeholder="🔍 Buscar por código o nombre..." oninput="renderKardexTab()">
+                </div>
+
+                <div class="add-product-section">
+                    <div class="add-product-title">📦 Productos en Kardex (<span id="kardexCount">0</span>)</div>
+                </div>
+                <div class="products-table-container">
+                    <table class="products-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Producto (en cotizador)</th>
+                                <th>Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kardexListBody"></tbody>
                     </table>
                 </div>
             </div>
@@ -2921,6 +2951,119 @@ async function generarFichaPDF() {
                     ${emp.redSocial ? `&nbsp;·&nbsp; 🌐 ${emp.redSocial}` : ''}
                     &nbsp;·&nbsp; Lima, Perú`;
             }
+        }
+
+        // ============================================
+        // KARDEX (STOCK) — Dropbox
+        // ============================================
+        const KARDEX_CONFIG = {
+            url: 'https://dl.dropboxusercontent.com/scl/fi/ypaoi32fdiu0l91l9wa8w/Kardex-Taller-2026.xlsx?rlkey=y0ywsqsa8acvlvfqniestyjd7&st=y3dxscyp&dl=1',
+            hoja: 0,              // índice o nombre de la hoja del Excel (0 = primera hoja)
+            columnaCodigo: null,  // déjalo en null para detectar automáticamente, o escribe el nombre exacto ej: 'CODIGO'
+            columnaStock: null    // déjalo en null para detectar automáticamente, o escribe el nombre exacto ej: 'STOCK'
+        };
+
+        let stockKardex = {};           // { "7015": 24, "7016": 0, ... }
+        let kardexUltimaActualizacion = null;
+
+        async function cargarKardex(mostrarAviso = true) {
+            const btn = document.getElementById('btnActualizarStock');
+            try {
+                if (btn) { btn.disabled = true; btn.textContent = '⏳ Actualizando...'; }
+
+                const resp = await fetch(KARDEX_CONFIG.url);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const buffer = await resp.arrayBuffer();
+                const workbook = XLSX.read(buffer, { type: 'array' });
+                const nombreHoja = typeof KARDEX_CONFIG.hoja === 'number' ? workbook.SheetNames[KARDEX_CONFIG.hoja] : KARDEX_CONFIG.hoja;
+                const filas = XLSX.utils.sheet_to_json(workbook.Sheets[nombreHoja], { defval: '' });
+                if (filas.length === 0) throw new Error('El Kardex no tiene filas de datos');
+
+                const encabezados = Object.keys(filas[0]);
+                const colCodigo = KARDEX_CONFIG.columnaCodigo || encabezados.find(h => /c[oó]digo|sku|item|art[ií]culo/i.test(h));
+                const colStock = KARDEX_CONFIG.columnaStock || encabezados.find(h => /stock|saldo|cantidad|existenc/i.test(h));
+                if (!colCodigo || !colStock) throw new Error('No se detectaron las columnas de código/stock. Configura KARDEX_CONFIG manualmente.');
+
+                const nuevoStock = {};
+                filas.forEach(fila => {
+                    const codigo = String(fila[colCodigo]).trim();
+                    const cantidad = parseFloat(fila[colStock]);
+                    if (codigo) nuevoStock[codigo] = isNaN(cantidad) ? 0 : cantidad;
+                });
+
+                stockKardex = nuevoStock;
+                kardexUltimaActualizacion = new Date();
+                localStorage.setItem('stockKardexCache', JSON.stringify({ stock: stockKardex, fecha: kardexUltimaActualizacion.toISOString() }));
+
+                renderProductList();
+                renderKardexTab();
+                actualizarEtiquetaStockHeader();
+                if (mostrarAviso) mostrarNotificacion(`✅ Stock actualizado (${Object.keys(stockKardex).length} productos)`, 'success');
+            } catch (e) {
+                console.error('Error al cargar Kardex:', e);
+                if (mostrarAviso) mostrarNotificacion('⚠️ No se pudo actualizar el stock: ' + e.message, 'warning');
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = '🔄 Actualizar desde Dropbox'; }
+            }
+        }
+
+        function cargarKardexDesdeCache() {
+            try {
+                const cache = localStorage.getItem('stockKardexCache');
+                if (cache) {
+                    const data = JSON.parse(cache);
+                    stockKardex = data.stock || {};
+                    kardexUltimaActualizacion = data.fecha ? new Date(data.fecha) : null;
+                    actualizarEtiquetaStockHeader();
+                }
+            } catch (e) { console.error('Error al leer cache de Kardex:', e); }
+        }
+
+        function actualizarEtiquetaStockHeader() {
+            const el = document.getElementById('kardexUltimaActualizacion');
+            if (el && kardexUltimaActualizacion) {
+                el.textContent = `Última actualización: ${kardexUltimaActualizacion.toLocaleString('es-PE')}`;
+            }
+        }
+
+        // Devuelve la cantidad en stock del producto, o null si el código no está en el Kardex
+        function obtenerStock(codigo) {
+            return stockKardex.hasOwnProperty(codigo) ? stockKardex[codigo] : null;
+        }
+
+        // Renderiza la tabla de la pestaña Kardex (todos los códigos del Excel, con o sin match en productosDB)
+        function renderKardexTab() {
+            const tbody = document.getElementById('kardexListBody');
+            if (!tbody) return;
+            const filtro = (document.getElementById('kardexSearchInput')?.value || '').toLowerCase().trim();
+            const codigos = Object.keys(stockKardex).sort();
+
+            document.getElementById('kardexCount').textContent = codigos.length;
+
+            const filtrados = codigos.filter(cod => {
+                if (!filtro) return true;
+                const prod = productosDB.find(p => p.codigo === cod);
+                return cod.toLowerCase().includes(filtro) || (prod && prod.nombre.toLowerCase().includes(filtro));
+            });
+
+            if (filtrados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#a0aec0;padding:20px;">${codigos.length === 0 ? 'Sin datos aún. Presiona "Actualizar desde Dropbox".' : 'Sin resultados para tu búsqueda.'}</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtrados.map(codigo => {
+                const stock = stockKardex[codigo];
+                const prod = productosDB.find(p => p.codigo === codigo);
+                const color = stock > 0 ? '#22543d' : '#c53030';
+                const bg = stock > 0 ? '#c6f6d5' : '#fed7d7';
+                return `
+                    <tr>
+                        <td class="codigo-cell">${codigo}</td>
+                        <td class="producto-cell">${prod ? prod.nombre : '<span style="color:#a0aec0;">(no está en el cotizador)</span>'}</td>
+                        <td><span style="background:${bg};color:${color};padding:2px 10px;border-radius:10px;font-weight:700;">${stock}</span></td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         const CANTIDAD_PAQUETE_DEFAULT = 32; // Ajustable a futuro (Fernando lo modifica aquí o por producto)
@@ -3813,6 +3956,8 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 renderSucursalList();
             } else if (tab === 'historial') {
                 renderHistorial();
+            } else if (tab === 'kardex') {
+                renderKardexTab();
             }
         }
 
@@ -4178,7 +4323,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             tbody.innerHTML = productosDB.map((producto, index) => `
                 <tr>
                     <td class="codigo-cell">${producto.codigo}</td>
-                    <td class="producto-cell">${producto.nombre}${producto.escalonado ? ` <span style="font-size:0.72em;background:#e0e7ff;color:#3730a3;padding:1px 6px;border-radius:4px;font-weight:700;">3 niveles · ${producto.tipoMayor === 'paquete' ? 'Paquete '+producto.cantidadMayor : 'Docena'}</span>` : ''}</td>
+                    <td class="producto-cell">${producto.nombre}${producto.escalonado ? ` <span style="font-size:0.72em;background:#e0e7ff;color:#3730a3;padding:1px 6px;border-radius:4px;font-weight:700;">3 niveles · ${producto.tipoMayor === 'paquete' ? 'Paquete '+producto.cantidadMayor : 'Docena'}</span>` : ''}${obtenerStock(producto.codigo) !== null ? ` <span style="font-size:0.72em;padding:1px 6px;border-radius:4px;font-weight:700;background:${obtenerStock(producto.codigo) > 0 ? '#c6f6d5' : '#fed7d7'};color:${obtenerStock(producto.codigo) > 0 ? '#22543d' : '#c53030'};">📦 ${obtenerStock(producto.codigo)}</span>` : ''}</td>
                     <td class="precio-cell">
                         ${mostrarConIGV ? `
                             <div style="font-size: 0.85em;">
@@ -5181,6 +5326,8 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             renderSucursalList();
             const empresaSelect = document.getElementById('empresaActivaSelect');
             if (empresaSelect) empresaSelect.value = empresaActiva;
+            cargarKardexDesdeCache();
+            cargarKardex(false); // actualización automática y silenciosa en segundo plano
             console.log('✅ Cotizador cargado correctamente');
             console.log(`📦 ${productosDB.length} productos disponibles`);
             console.log(`🚚 ${sucursalesDB.length} sucursales disponibles`);

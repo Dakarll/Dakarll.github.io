@@ -4634,7 +4634,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             const fecha = new Date();
             const opciones = { year: 'numeric', month: 'long', day: 'numeric' };
             const fechaStr = fecha.toLocaleDateString('es-PE', opciones);
-            const numDoc = `N° ${String(obtenerYAvanzarNumeroCotizacion()).padStart(6, '0')}`;
+            const numeroCotizacion = "";
 
             // EMPRESA (logo, contacto, banco, footer)
             aplicarEmpresaAlPrint();

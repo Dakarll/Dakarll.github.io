@@ -1352,15 +1352,13 @@
             margin-right: 3px;
         }
         .global-discount-row {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        row-gap: 6px;
-        gap: 10px;
-        margin-top: 8px;
-        font-size: 0.88em;
-        opacity: 0.9;
-    }
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            font-size: 0.88em;
+            opacity: 0.9;
+        }
         .global-discount-input {
             width: 60px;
             padding: 4px 8px;
@@ -3639,9 +3637,6 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             return cantidad >= 6 ? producto.precioMayor : producto.precioUnd;
         }
 
-        //nro de cotizacion
-
-
         // Etiqueta legible del nivel de precio aplicado (para mostrar en tabla/PDF)
         function obtenerEtiquetaTipoPrecio(producto, cantidad) {
             if (forzarPorMayor) {
@@ -4634,7 +4629,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             const fecha = new Date();
             const opciones = { year: 'numeric', month: 'long', day: 'numeric' };
             const fechaStr = fecha.toLocaleDateString('es-PE', opciones);
-            const numeroCotizacion = "";
+            const numDoc = `N° ${String(Date.now()).slice(-6)}`;
 
             // EMPRESA (logo, contacto, banco, footer)
             aplicarEmpresaAlPrint();

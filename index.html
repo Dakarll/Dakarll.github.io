@@ -2085,25 +2085,32 @@
             <!-- TAB: KARDEX (STOCK DESDE DROPBOX) -->
             <div class="tab-content" id="tab-kardex">
                 <div class="new-form-section">
-                    <h3>📊 Kardex de Stock (Dropbox)</h3>
+                    <h3>📊 Kardex (Dropbox)</h3>
                     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
                         <button type="button" id="btnActualizarStock" class="btn btn-success" onclick="cargarKardex(true)">🔄 Actualizar desde Dropbox</button>
                         <div id="kardexUltimaActualizacion" style="color:white;font-size:0.85em;opacity:0.85;"></div>
                     </div>
-                    <input type="text" class="form-input" id="kardexSearchInput" placeholder="🔍 Buscar por código o nombre..." oninput="renderKardexTab()">
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+                        <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0;">
+                            <label class="form-label" style="color:white;">📑 Hoja del Excel</label>
+                            <select class="form-input" id="kardexHojaSelect" onchange="cambiarHojaKardex()">
+                                <option value="">Cargando hojas...</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:2;min-width:220px;margin-bottom:0;">
+                            <label class="form-label" style="color:white;">🔍 Buscar en esta hoja</label>
+                            <input type="text" class="form-input" id="kardexSearchInput" placeholder="Buscar en cualquier columna..." oninput="renderKardexTabCompleta()">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="add-product-section">
-                    <div class="add-product-title">📦 Productos en Kardex (<span id="kardexCount">0</span>)</div>
+                    <div class="add-product-title">📄 Filas en esta hoja (<span id="kardexCount">0</span>)</div>
                 </div>
-                <div class="products-table-container">
+                <div class="products-table-container" style="overflow-x:auto;">
                     <table class="products-table">
                         <thead>
-                            <tr>
-                                <th>Código</th>
-                                <th>Producto (en cotizador)</th>
-                                <th>Stock</th>
-                            </tr>
+                            <tr id="kardexTableHead"></tr>
                         </thead>
                         <tbody id="kardexListBody"></tbody>
                     </table>
@@ -2954,16 +2961,18 @@ async function generarFichaPDF() {
         }
 
         // ============================================
-        // KARDEX (STOCK) — Dropbox
+        // KARDEX — Dropbox (todas las hojas y columnas)
         // ============================================
         const KARDEX_CONFIG = {
             url: 'https://dl.dropboxusercontent.com/scl/fi/ypaoi32fdiu0l91l9wa8w/Kardex-Taller-2026.xlsx?rlkey=y0ywsqsa8acvlvfqniestyjd7&st=y3dxscyp&dl=1',
-            hoja: 0,              // índice o nombre de la hoja del Excel (0 = primera hoja)
-            columnaCodigo: null,  // déjalo en null para detectar automáticamente, o escribe el nombre exacto ej: 'CODIGO'
-            columnaStock: null    // déjalo en null para detectar automáticamente, o escribe el nombre exacto ej: 'STOCK'
+            hoja: 0,              // hoja usada para vincular el STOCK con productosDB (índice o nombre)
+            columnaCodigo: null,  // null = detección automática, o escribe el nombre exacto ej: 'ARTICULO'
+            columnaStock: null    // null = detección automática, o escribe el nombre exacto ej: 'SALDO'
         };
 
-        let stockKardex = {};           // { "7015": 24, "7016": 0, ... }
+        let stockKardex = {};          // { "7015": 24, ... } — para los badges de stock en Productos
+        let kardexHojasData = {};      // { "Hoja1": [ {col:val,...}, ... ], "Hoja2": [...] } — TODAS las hojas, TODAS las columnas
+        let kardexNombresHojas = [];   // orden de las hojas tal como están en el Excel
         let kardexUltimaActualizacion = null;
 
         async function cargarKardex(mostrarAviso = true) {
@@ -2975,46 +2984,69 @@ async function generarFichaPDF() {
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 const buffer = await resp.arrayBuffer();
                 const workbook = XLSX.read(buffer, { type: 'array' });
-                const nombreHoja = typeof KARDEX_CONFIG.hoja === 'number' ? workbook.SheetNames[KARDEX_CONFIG.hoja] : KARDEX_CONFIG.hoja;
-                const filas = XLSX.utils.sheet_to_json(workbook.Sheets[nombreHoja], { defval: '' });
-                if (filas.length === 0) throw new Error('El Kardex no tiene filas de datos');
 
-                const encabezados = Object.keys(filas[0]);
-                const colCodigo = KARDEX_CONFIG.columnaCodigo || encabezados.find(h => /c[oó]digo|sku|item|art[ií]culo/i.test(h));
-                const colStock = KARDEX_CONFIG.columnaStock || encabezados.find(h => /stock|saldo|cantidad|existenc/i.test(h));
-                if (!colCodigo || !colStock) throw new Error('No se detectaron las columnas de código/stock. Configura KARDEX_CONFIG manualmente.');
-
-                const nuevoStock = {};
-                filas.forEach(fila => {
-                    const codigo = String(fila[colCodigo]).trim();
-                    const cantidad = parseFloat(fila[colStock]);
-                    if (codigo) nuevoStock[codigo] = isNaN(cantidad) ? 0 : cantidad;
+                // Parsear TODAS las hojas con TODAS sus columnas
+                kardexNombresHojas = workbook.SheetNames;
+                kardexHojasData = {};
+                kardexNombresHojas.forEach(nombre => {
+                    kardexHojasData[nombre] = XLSX.utils.sheet_to_json(workbook.Sheets[nombre], { defval: '' });
                 });
 
-                stockKardex = nuevoStock;
+                // Construir el mapa de stock (para los badges) desde la hoja configurada en KARDEX_CONFIG
+                construirStockDesdeHojas();
+
                 kardexUltimaActualizacion = new Date();
-                localStorage.setItem('stockKardexCache', JSON.stringify({ stock: stockKardex, fecha: kardexUltimaActualizacion.toISOString() }));
+                localStorage.setItem('kardexCache', JSON.stringify({
+                    hojasData: kardexHojasData,
+                    nombresHojas: kardexNombresHojas,
+                    stock: stockKardex,
+                    fecha: kardexUltimaActualizacion.toISOString()
+                }));
 
                 renderProductList();
-                renderKardexTab();
+                poblarSelectorHojas();
+                renderKardexTabCompleta();
                 actualizarEtiquetaStockHeader();
-                if (mostrarAviso) mostrarNotificacion(`✅ Stock actualizado (${Object.keys(stockKardex).length} productos)`, 'success');
+                if (mostrarAviso) mostrarNotificacion(`✅ Kardex actualizado (${kardexNombresHojas.length} hojas)`, 'success');
             } catch (e) {
                 console.error('Error al cargar Kardex:', e);
-                if (mostrarAviso) mostrarNotificacion('⚠️ No se pudo actualizar el stock: ' + e.message, 'warning');
+                if (mostrarAviso) mostrarNotificacion('⚠️ No se pudo actualizar el Kardex: ' + e.message, 'warning');
             } finally {
                 if (btn) { btn.disabled = false; btn.textContent = '🔄 Actualizar desde Dropbox'; }
             }
         }
 
+        // Arma stockKardex (código -> cantidad) a partir de la hoja/columnas configuradas en KARDEX_CONFIG
+        function construirStockDesdeHojas() {
+            const nombreHoja = typeof KARDEX_CONFIG.hoja === 'number' ? kardexNombresHojas[KARDEX_CONFIG.hoja] : KARDEX_CONFIG.hoja;
+            const filas = kardexHojasData[nombreHoja];
+            if (!filas || filas.length === 0) { stockKardex = {}; return; }
+
+            const encabezados = Object.keys(filas[0]);
+            const colCodigo = KARDEX_CONFIG.columnaCodigo || encabezados.find(h => /c[oó]digo|sku|item|art[ií]culo/i.test(h));
+            const colStock = KARDEX_CONFIG.columnaStock || encabezados.find(h => /stock|saldo|cantidad|existenc/i.test(h));
+            if (!colCodigo || !colStock) { stockKardex = {}; return; }
+
+            const nuevoStock = {};
+            filas.forEach(fila => {
+                const codigo = String(fila[colCodigo]).trim();
+                const cantidad = parseFloat(fila[colStock]);
+                if (codigo) nuevoStock[codigo] = isNaN(cantidad) ? 0 : cantidad;
+            });
+            stockKardex = nuevoStock;
+        }
+
         function cargarKardexDesdeCache() {
             try {
-                const cache = localStorage.getItem('stockKardexCache');
+                const cache = localStorage.getItem('kardexCache');
                 if (cache) {
                     const data = JSON.parse(cache);
+                    kardexHojasData = data.hojasData || {};
+                    kardexNombresHojas = data.nombresHojas || [];
                     stockKardex = data.stock || {};
                     kardexUltimaActualizacion = data.fecha ? new Date(data.fecha) : null;
                     actualizarEtiquetaStockHeader();
+                    poblarSelectorHojas();
                 }
             } catch (e) { console.error('Error al leer cache de Kardex:', e); }
         }
@@ -3031,39 +3063,63 @@ async function generarFichaPDF() {
             return stockKardex.hasOwnProperty(codigo) ? stockKardex[codigo] : null;
         }
 
-        // Renderiza la tabla de la pestaña Kardex (todos los códigos del Excel, con o sin match en productosDB)
-        function renderKardexTab() {
+        // Llena el selector de hojas y recupera la hoja que el usuario tenía elegida (localStorage)
+        function poblarSelectorHojas() {
+            const select = document.getElementById('kardexHojaSelect');
+            if (!select) return;
+            if (kardexNombresHojas.length === 0) {
+                select.innerHTML = '<option value="">Sin datos aún</option>';
+                return;
+            }
+            const guardada = localStorage.getItem('kardexHojaSeleccionada');
+            const hojaActual = kardexNombresHojas.includes(guardada) ? guardada : kardexNombresHojas[0];
+
+            select.innerHTML = kardexNombresHojas.map(h => `<option value="${h}" ${h === hojaActual ? 'selected' : ''}>${h}</option>`).join('');
+        }
+
+        // Se ejecuta cuando el usuario cambia de hoja en el selector — guarda su elección
+        function cambiarHojaKardex() {
+            const select = document.getElementById('kardexHojaSelect');
+            if (!select || !select.value) return;
+            localStorage.setItem('kardexHojaSeleccionada', select.value);
+            renderKardexTabCompleta();
+        }
+
+        // Renderiza la tabla completa (todas las columnas) de la hoja seleccionada
+        function renderKardexTabCompleta() {
+            const thead = document.getElementById('kardexTableHead');
             const tbody = document.getElementById('kardexListBody');
-            if (!tbody) return;
-            const filtro = (document.getElementById('kardexSearchInput')?.value || '').toLowerCase().trim();
-            const codigos = Object.keys(stockKardex).sort();
+            if (!thead || !tbody) return;
 
-            document.getElementById('kardexCount').textContent = codigos.length;
+            const select = document.getElementById('kardexHojaSelect');
+            const hoja = select ? select.value : null;
+            const filas = hoja ? (kardexHojasData[hoja] || []) : [];
 
-            const filtrados = codigos.filter(cod => {
-                if (!filtro) return true;
-                const prod = productosDB.find(p => p.codigo === cod);
-                return cod.toLowerCase().includes(filtro) || (prod && prod.nombre.toLowerCase().includes(filtro));
-            });
-
-            if (filtrados.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#a0aec0;padding:20px;">${codigos.length === 0 ? 'Sin datos aún. Presiona "Actualizar desde Dropbox".' : 'Sin resultados para tu búsqueda.'}</td></tr>`;
+            if (filas.length === 0) {
+                thead.innerHTML = '';
+                document.getElementById('kardexCount').textContent = 0;
+                tbody.innerHTML = `<tr><td style="text-align:center;color:#a0aec0;padding:20px;">${kardexNombresHojas.length === 0 ? 'Sin datos aún. Presiona "Actualizar desde Dropbox".' : 'Esta hoja no tiene filas de datos.'}</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = filtrados.map(codigo => {
-                const stock = stockKardex[codigo];
-                const prod = productosDB.find(p => p.codigo === codigo);
-                const color = stock > 0 ? '#22543d' : '#c53030';
-                const bg = stock > 0 ? '#c6f6d5' : '#fed7d7';
-                return `
-                    <tr>
-                        <td class="codigo-cell">${codigo}</td>
-                        <td class="producto-cell">${prod ? prod.nombre : '<span style="color:#a0aec0;">(no está en el cotizador)</span>'}</td>
-                        <td><span style="background:${bg};color:${color};padding:2px 10px;border-radius:10px;font-weight:700;">${stock}</span></td>
-                    </tr>
-                `;
-            }).join('');
+            const columnas = Object.keys(filas[0]);
+            thead.innerHTML = columnas.map(c => `<th>${c}</th>`).join('');
+
+            const filtro = (document.getElementById('kardexSearchInput')?.value || '').toLowerCase().trim();
+            const filtradas = !filtro ? filas : filas.filter(fila =>
+                columnas.some(c => String(fila[c]).toLowerCase().includes(filtro))
+            );
+
+            document.getElementById('kardexCount').textContent = filtradas.length;
+
+            if (filtradas.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${columnas.length}" style="text-align:center;color:#a0aec0;padding:20px;">Sin resultados para tu búsqueda.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtradas.map(fila => `
+                <tr>${columnas.map(c => `<td>${fila[c] === '' ? '' : fila[c]}</td>`).join('')}</tr>
+            `).join('');
         }
 
         const CANTIDAD_PAQUETE_DEFAULT = 32; // Ajustable a futuro (Fernando lo modifica aquí o por producto)
@@ -3085,7 +3141,7 @@ async function generarFichaPDF() {
             };
         }
 
-        const productosDB = [
+        let productosDB = [
             // ===================================================================
             // PRODUCTOS EXISTENTES (precios propios de Fabexsa/Confort Line)
             // ===================================================================
@@ -3252,7 +3308,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
         ];
 
         // BASE DE DATOS COMPLETA DE SUCURSALES SHALOM (TODAS LAS SUCURSALES DEL DOCUMENTO)
-        const sucursalesDB = [
+        let sucursalesDB = [
             {nombre:"Chorrillos Los Faisanes",direccion:"Av. Los Faisanes 420",tipo:"Micro",ciudad:"Chorrillos",provincia:"Lima"},
             {nombre:"Chorrillos Co",direccion:"Av. Santa Anita N.° 580",tipo:"Grande / Co",ciudad:"Chorrillos",provincia:"Lima"},
             {nombre:"Las Delicias De Villa",direccion:"Av. 12 De Octubre Mz. A - 03, Lt. 02",tipo:"Pequeña",ciudad:"Villa",provincia:"Lima"},
@@ -3957,7 +4013,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             } else if (tab === 'historial') {
                 renderHistorial();
             } else if (tab === 'kardex') {
-                renderKardexTab();
+                renderKardexTabCompleta();
             }
         }
 

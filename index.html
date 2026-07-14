@@ -2661,10 +2661,19 @@ function renderPreviewFicha() {
 }
 
 // Copia la imagen seleccionada al portapapeles (funciona además con clic derecho > Copiar imagen sobre la foto)
+// Back4App (parsefiles.back4app.com) no envía cabeceras CORS, así que el navegador
+// bloquea leer los bytes de la imagen directo. Usamos un proxy de imágenes que sí las agrega,
+// solo para copiar/descargar (la vista previa sigue cargando directo desde Back4App).
+function obtenerUrlProxyCors(url) {
+    const sinProtocolo = url.replace(/^https?:\/\//, '');
+    return `https://images.weserv.nl/?url=${encodeURIComponent(sinProtocolo)}`;
+}
+
 async function copiarImagenSeleccionada() {
     if (!fichaImagenSeleccionada) return;
     try {
-        const resp = await fetch(fichaImagenSeleccionada);
+        const resp = await fetch(obtenerUrlProxyCors(fichaImagenSeleccionada));
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const blob = await resp.blob();
         try {
             await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
@@ -2700,7 +2709,8 @@ function convertirImagenAPng(blob) {
 async function descargarImagenSeleccionada() {
     if (!fichaImagenSeleccionada) return;
     try {
-        const resp = await fetch(fichaImagenSeleccionada);
+        const resp = await fetch(obtenerUrlProxyCors(fichaImagenSeleccionada));
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const blob = await resp.blob();
         const extension = blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg';
         const url = URL.createObjectURL(blob);

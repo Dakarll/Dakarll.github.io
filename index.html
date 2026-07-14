@@ -117,6 +117,113 @@
             animation: fadeIn 0.3s ease;
         }
 
+        .galeria-cat-btn {
+            border-radius: 8px !important;
+            border: 1.5px solid var(--border) !important;
+            padding: 8px 16px !important;
+        }
+
+        .galeria-cat-btn.active {
+            background: var(--secondary) !important;
+            color: white !important;
+            border-color: var(--secondary) !important;
+        }
+
+        .galeria-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+            margin-top: 18px;
+        }
+
+        .galeria-item {
+            background: white;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .galeria-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
+
+        .galeria-item img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            display: block;
+            background: #f1f5f9;
+        }
+
+        .galeria-item-nombre {
+            padding: 8px 10px;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: var(--text);
+            text-align: center;
+        }
+
+        .ficha-cat-btn {
+            border-radius: 8px !important;
+            border: 1.5px solid var(--border) !important;
+            padding: 8px 16px !important;
+        }
+
+        .ficha-cat-btn.active {
+            background: var(--secondary) !important;
+            color: white !important;
+            border-color: var(--secondary) !important;
+        }
+
+        .ficha-producto-icono {
+            font-size: 2.5em;
+            text-align: center;
+            padding: 20px 0 8px 0;
+            background: #f8fafc;
+        }
+
+        .ficha-producto-card.seleccionado {
+            border-color: var(--secondary);
+            border-width: 2px;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
+        }
+
+        .ficha-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .ficha-preview-panel {
+            position: sticky;
+            top: 16px;
+            background: white;
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .ficha-preview-panel img {
+            width: 100%;
+            border-radius: 10px;
+            border: 1.5px solid var(--border);
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        @media (max-width: 900px) {
+            .ficha-layout {
+                grid-template-columns: 1fr;
+            }
+            .ficha-preview-panel {
+                position: static;
+            }
+        }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -1353,15 +1460,13 @@
             margin-right: 3px;
         }
         .global-discount-row {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        row-gap: 6px;
-        gap: 10px;
-        margin-top: 8px;
-        font-size: 0.88em;
-        opacity: 0.9;
-    }
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            font-size: 0.88em;
+            opacity: 0.9;
+        }
         .global-discount-input {
             width: 60px;
             padding: 4px 8px;
@@ -2210,17 +2315,23 @@
 </div>
 
 <div class="tab-content" id="tab-fichas">
-    <!-- SELECTOR DE PRODUCTO -->
+    <!-- SELECTOR DE PRODUCTO POR CATEGORÍA -->
     <div class="add-product-section">
-        <div class="add-product-title">📄 Crear Ficha Técnica</div>
-        <p style="margin-bottom: 15px; color: #718096; font-size: 0.9em;">
-            Selecciona un producto para generar su ficha técnica profesional
-        </p>
-        <div class="form-group">
-            <label class="form-label">Producto</label>
-            <select class="form-input" id="fichaProductoSelect" onchange="cargarProductoFicha(this.value)">
-                <option value="">Selecciona un producto...</option>
-            </select>
+        <div class="add-product-title">🖼️ Imágenes de Productos</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;margin-top:10px;">
+            <button type="button" class="tab ficha-cat-btn active" id="fichaCatBtn_toallas" onclick="cambiarCategoriaFicha('toallas')">🧺 Toallas</button>
+            <button type="button" class="tab ficha-cat-btn" id="fichaCatBtn_telas" onclick="cambiarCategoriaFicha('telas')">🧵 Telas</button>
+            <button type="button" class="tab ficha-cat-btn" id="fichaCatBtn_vestimenta" onclick="cambiarCategoriaFicha('vestimenta')">👕 Vestimenta</button>
+        </div>
+        <input type="text" class="form-input" id="fichaBuscarProducto" placeholder="🔍 Buscar por nombre..." oninput="renderPickerFicha()" style="margin-bottom:16px;">
+    </div>
+
+    <div class="ficha-layout">
+        <div id="fichaProductoGrid" class="galeria-grid"></div>
+        <div class="ficha-preview-panel">
+            <div id="fichaPreviewPanel">
+                <div style="text-align:center;color:#a0aec0;padding:40px 16px;">Selecciona un producto para ver su imagen aquí.</div>
+            </div>
         </div>
     </div>
 
@@ -2233,7 +2344,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label" style="color: white;">Código del Producto</label>
-                        <input type="text" class="form-input" id="fichaCodigo" readonly>
+                        <input type="text" class="form-input" id="fichaCodigo" placeholder="Escribe el código del producto">
                     </div>
                     <div class="form-group">
                         <label class="form-label" style="color: white;">Nombre del Producto</label>
@@ -2441,27 +2552,180 @@
 
 <!-- JAVASCRIPT PARA FICHAS TÉCNICAS - AGREGAR ANTES DEL </script> FINAL -->
 <script>
-// Cargar productos en selector
-function cargarProductosSelectorFicha() {
-    const select = document.getElementById('fichaProductoSelect');
-    select.innerHTML = '<option value="">Selecciona un producto...</option>' + 
-        productosDB.map((p, i) => `<option value="${i}">${p.codigo} - ${p.nombre}</option>`).join('');
+// ============================================
+// FICHA TÉCNICA — Productos consultados desde Back4App
+// ============================================
+// Si el picker no carga imágenes, ve a:
+// Dashboard de tu app > ⚙️ App Settings > Security & Keys > copia el valor
+// exacto de "REST API Key" y reemplázalo en restApiKey abajo.
+const BACK4APP_CONFIG = {
+    appId: 'FUvQmIkpBQRslJOaONps84g4RfBOVrwotiZTJx1r',
+    restApiKey: '3amPib5iqXdsAEplcXEaB7PnMWrbvtSXC1GFHXHv',
+    serverUrl: 'https://parseapi.back4app.com',
+    clase: 'productos'
+};
+
+let productosFicha = { toallas: null, telas: null, vestimenta: null }; // null = aún no consultada a Back4App
+let categoriaFichaActiva = localStorage.getItem('fichaCategoriaActiva') || 'toallas';
+let fichaProductoSeleccionadoId = null;
+let fichaImagenSeleccionada = '';
+
+function cambiarCategoriaFicha(categoria) {
+    categoriaFichaActiva = categoria;
+    localStorage.setItem('fichaCategoriaActiva', categoria);
+    document.querySelectorAll('.ficha-cat-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById('fichaCatBtn_' + categoria);
+    if (btn) btn.classList.add('active');
+
+    if (productosFicha[categoria] === null) {
+        cargarProductosFicha(categoria);
+    } else {
+        renderPickerFicha();
+    }
 }
 
-function cargarProductoFicha(index) {
-    if (index === '') {
-        document.getElementById('fichaFormSection').style.display = 'none';
+// Consulta a Back4App los productos (imágenes) registrados en esa categoría
+async function cargarProductosFicha(categoria) {
+    const cont = document.getElementById('fichaProductoGrid');
+    if (cont) cont.innerHTML = '<div style="text-align:center;color:#a0aec0;padding:30px;grid-column:1/-1;">⏳ Consultando base de datos...</div>';
+    try {
+        const where = encodeURIComponent(JSON.stringify({ categoria }));
+        const resp = await fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${BACK4APP_CONFIG.clase}?where=${where}&order=orden`, {
+            headers: {
+                'X-Parse-Application-Id': BACK4APP_CONFIG.appId,
+                'X-Parse-REST-API-Key': BACK4APP_CONFIG.restApiKey
+            }
+        });
+        if (!resp.ok) {
+            const errorBody = await resp.json().catch(() => ({}));
+            throw new Error(errorBody.error || ('HTTP ' + resp.status));
+        }
+        const data = await resp.json();
+        productosFicha[categoria] = data.results || [];
+        renderPickerFicha();
+    } catch (e) {
+        console.error('Error al consultar productos de ' + categoria, e);
+        productosFicha[categoria] = [];
+        if (cont) cont.innerHTML = `<div style="text-align:center;color:#c53030;padding:30px;grid-column:1/-1;">⚠️ No se pudo consultar la base de datos: ${e.message}</div>`;
+    }
+}
+
+function renderPickerFicha() {
+    const cont = document.getElementById('fichaProductoGrid');
+    if (!cont) return;
+
+    const filtro = (document.getElementById('fichaBuscarProducto')?.value || '').toLowerCase().trim();
+    const items = productosFicha[categoriaFichaActiva] || [];
+    const filtrados = items.filter(it => !filtro || (it.nombre || '').toLowerCase().includes(filtro));
+
+    if (filtrados.length === 0) {
+        cont.innerHTML = `<div style="text-align:center;color:#a0aec0;padding:30px;grid-column:1/-1;">${items.length === 0 ? 'Aún no hay productos registrados en esta categoría.' : 'Sin resultados para tu búsqueda.'}</div>`;
         return;
     }
-    
-    const producto = productosDB[index];
-    document.getElementById('fichaCodigo').value = producto.codigo;
-    document.getElementById('fichaNombre').value = producto.nombre;
-    document.getElementById('fichaFormSection').style.display = 'block';
-    
-    // Autocompletar valores por defecto
+
+    cont.innerHTML = filtrados.map(item => `
+        <div class="galeria-item ficha-producto-card ${fichaProductoSeleccionadoId === item.objectId ? 'seleccionado' : ''}" onclick="seleccionarProductoFicha('${item.objectId}')">
+            <img src="${(item.imagen && item.imagen.url) || ''}" alt="${item.nombre || ''}" loading="lazy">
+            <div class="galeria-item-nombre">${item.nombre || ''}</div>
+        </div>
+    `).join('');
+}
+
+let fichaNombreSeleccionado = '';
+
+function seleccionarProductoFicha(objectId) {
+    const item = (productosFicha[categoriaFichaActiva] || []).find(it => it.objectId === objectId);
+    if (!item) return;
+
+    fichaProductoSeleccionadoId = objectId;
+    fichaImagenSeleccionada = (item.imagen && item.imagen.url) || '';
+    fichaNombreSeleccionado = item.nombre || 'imagen';
+    renderPickerFicha(); // resalta la card elegida
+    renderPreviewFicha();
+}
+
+function renderPreviewFicha() {
+    const panel = document.getElementById('fichaPreviewPanel');
+    if (!panel) return;
+    if (!fichaImagenSeleccionada) {
+        panel.innerHTML = '<div style="text-align:center;color:#a0aec0;padding:40px 16px;">Selecciona un producto para ver su imagen aquí.</div>';
+        return;
+    }
+    panel.innerHTML = `
+        <img src="${fichaImagenSeleccionada}" alt="${fichaNombreSeleccionado}">
+        <div style="font-weight:700;color:#2d3748;margin-bottom:14px;text-align:center;">${fichaNombreSeleccionado}</div>
+        <button type="button" class="btn btn-success" style="width:100%;margin-bottom:8px;" onclick="copiarImagenSeleccionada()">📋 Copiar Imagen</button>
+        <button type="button" class="btn" style="width:100%;background:#edf2f7;color:#2d3748;margin-bottom:8px;" onclick="descargarImagenSeleccionada()">⬇️ Descargar</button>
+        <button type="button" class="btn" style="width:100%;background:white;color:#4299e1;border:1.5px solid #4299e1;" onclick="abrirFichaTecnicaDesdeImagen()">📝 Crear Ficha Técnica</button>
+    `;
+}
+
+// Copia la imagen seleccionada al portapapeles (funciona además con clic derecho > Copiar imagen sobre la foto)
+async function copiarImagenSeleccionada() {
+    if (!fichaImagenSeleccionada) return;
+    try {
+        const resp = await fetch(fichaImagenSeleccionada);
+        const blob = await resp.blob();
+        try {
+            await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+        } catch (errFormato) {
+            // Algunos navegadores solo aceptan PNG en el portapapeles: convertimos como respaldo
+            const pngBlob = await convertirImagenAPng(blob);
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+        }
+        mostrarNotificacion('✅ Imagen copiada al portapapeles', 'success');
+    } catch (e) {
+        console.error('Error al copiar imagen:', e);
+        mostrarNotificacion('⚠️ No se pudo copiar automáticamente. Prueba clic derecho sobre la imagen > Copiar imagen', 'warning');
+    }
+}
+
+function convertirImagenAPng(blob) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            canvas.getContext('2d').drawImage(img, 0, 0);
+            canvas.toBlob(b => b ? resolve(b) : reject(new Error('No se pudo convertir la imagen')), 'image/png');
+            URL.revokeObjectURL(img.src);
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(blob);
+    });
+}
+
+// Descarga la imagen seleccionada al dispositivo
+async function descargarImagenSeleccionada() {
+    if (!fichaImagenSeleccionada) return;
+    try {
+        const resp = await fetch(fichaImagenSeleccionada);
+        const blob = await resp.blob();
+        const extension = blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg';
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${(fichaNombreSeleccionado || 'imagen').replace(/[^a-zA-Z0-9._-]/g, '_')}.${extension}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        console.error('Error al descargar imagen:', e);
+        window.open(fichaImagenSeleccionada, '_blank'); // respaldo: abre la imagen en otra pestaña
+    }
+}
+
+// Abre el formulario de ficha técnica solo si el usuario lo pide explícitamente
+function abrirFichaTecnicaDesdeImagen() {
+    document.getElementById('fichaNombre').value = fichaNombreSeleccionado;
+    document.getElementById('fichaCodigo').value = '';
     document.getElementById('fichaMarca').value = 'Línea Hotelera';
     document.getElementById('fichaPais').value = 'Perú';
+    document.getElementById('fichaFormSection').style.display = 'block';
+    document.getElementById('fichaFormSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('fichaCodigo').focus();
 }
 
 function mostrarVistaPrevia() {
@@ -2491,6 +2755,11 @@ function generarHTMLFicha() {
     };
 
     return `
+        ${fichaImagenSeleccionada ? `
+        <div class="ficha-section" style="text-align:center;">
+            <img src="${fichaImagenSeleccionada}" alt="${data.nombre}" style="max-width:280px;max-height:280px;border-radius:10px;border:1.5px solid #e2e8f0;object-fit:cover;">
+        </div>
+        ` : ''}
         <div class="ficha-section">
             <h3>📋 Información General</h3>
             <div class="ficha-grid">
@@ -4016,6 +4285,12 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 renderHistorial();
             } else if (tab === 'kardex') {
                 renderKardexTabCompleta();
+            } else if (tab === 'fichas') {
+                if (productosFicha[categoriaFichaActiva] === null) {
+                    cargarProductosFicha(categoriaFichaActiva);
+                } else {
+                    renderPickerFicha();
+                }
             }
         }
 
@@ -5386,6 +5661,9 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             if (empresaSelect) empresaSelect.value = empresaActiva;
             cargarKardexDesdeCache();
             cargarKardex(false); // actualización automática y silenciosa en segundo plano
+            const fichaCatBtn = document.getElementById('fichaCatBtn_' + categoriaFichaActiva);
+            if (fichaCatBtn) { document.querySelectorAll('.ficha-cat-btn').forEach(b => b.classList.remove('active')); fichaCatBtn.classList.add('active'); }
+            renderPickerFicha();
             console.log('✅ Cotizador cargado correctamente');
             console.log(`📦 ${productosDB.length} productos disponibles`);
             console.log(`🚚 ${sucursalesDB.length} sucursales disponibles`);

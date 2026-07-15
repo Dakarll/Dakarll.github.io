@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -3387,6 +3386,11 @@ function mostrarApp() {
                     </select>
                     <button type="button" onclick="abrirEditEmpresaModal()" title="Configurar datos de empresa (logo, banco, contacto)" style="background:rgba(255,255,255,0.15);color:white;border:1.5px solid rgba(255,255,255,0.35);border-radius:6px;padding:3px 8px;font-size:0.85em;cursor:pointer;">⚙️</button>
                 </div>
+                <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.2);display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <button type="button" id="btnCarpetaFija" onclick="elegirCarpetaFija()" style="background:rgba(255,255,255,0.15);color:white;border:1.5px solid rgba(255,255,255,0.35);border-radius:6px;padding:4px 10px;font-size:0.82em;font-weight:700;cursor:pointer;">📁 Elegir carpeta fija</button>
+                    <button type="button" id="btnQuitarCarpetaFija" onclick="quitarCarpetaFija()" style="display:none;background:rgba(255,255,255,0.1);color:white;border:1.5px solid rgba(255,255,255,0.25);border-radius:6px;padding:4px 10px;font-size:0.82em;cursor:pointer;">✕ Quitar</button>
+                    <span id="carpetaFijaLabel" style="font-size:0.78em;opacity:0.85;">Se preguntará la carpeta en cada descarga</span>
+                </div>
                 <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.2);">
                     <div style="font-size:0.82em;font-weight:700;margin-bottom:6px;opacity:0.85;">💰 Forma de Pago</div>
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -4495,6 +4499,10 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
         // ============================================
 
         let productosEnTabla = [];
+        // Guarda, por tipo de documento, el correlativo y el objectId del registro que se está
+        // armando ahora mismo — así, si se regenera la misma cotización, se reutiliza el mismo
+        // número y se actualiza el mismo registro en vez de crear uno nuevo.
+        let registroEnCurso = { cotizacion: null, orden_compra: null };
         let productoSeleccionado = null;
         let sucursalSeleccionada = null;
         let tabActual = 'cotizar';
@@ -4587,6 +4595,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 sucursal: sucursalSeleccionada,
                 productosDB: productosDB,
                 sucursalesDB: sucursalesDB,
+                registroEnCurso: registroEnCurso,
                 fecha: new Date().toISOString()
             };
             try {
@@ -4608,6 +4617,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                     if (diferencia < 24) {
                         productosEnTabla = (estado.productos || []).map(migrarProductoLegacy);
                         sucursalSeleccionada = estado.sucursal || null;
+                        registroEnCurso = estado.registroEnCurso || { cotizacion: null, orden_compra: null };
                         if (estado.productosDB) {
                             productosDB = estado.productosDB.map(migrarProductoLegacy);
                         }
@@ -4983,6 +4993,10 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 document.getElementById('montoAdelanto').value = '';
                 document.getElementById('saldoPendienteLabel').textContent = '';
                 document.getElementById('pagoResumen').textContent = '';
+                // La próxima vez que se genere un documento, se pedirá un número correlativo nuevo
+                const tipodocActual = document.getElementById('tipoDocumento').value;
+                const tipoContadorActual = tipodocActual === 'ORDEN DE COMPRA' ? 'orden_compra' : 'cotizacion';
+                registroEnCurso[tipoContadorActual] = null;
                 renderTable();
                 const sucSel = document.getElementById('sucursalSeleccionada');
                 if (sucSel) sucSel.style.display = 'none';
@@ -5380,7 +5394,157 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
 
         // Descarga un archivo (Blob). En Chrome/Edge permite elegir la carpeta de destino;
         // en navegadores que no lo soportan (Firefox/Safari), usa la descarga estándar.
+        // ============================================
+        // CARPETA FIJA DE DESCARGAS (solo Cotización / Orden de Compra)
+        // ============================================
+        // Guarda el "handle" de la carpeta elegida en IndexedDB (no en localStorage, porque
+        // localStorage no puede guardar este tipo de objeto). Así el navegador la recuerda
+        // entre visitas y no hay que volver a elegirla cada vez.
+        const DB_CARPETA_NOMBRE = 'cotizador_carpeta_descarga';
+        const DB_CARPETA_STORE = 'handles';
+
+        function abrirDBCarpeta() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_CARPETA_NOMBRE, 1);
+                req.onupgradeneeded = () => req.result.createObjectStore(DB_CARPETA_STORE);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function guardarCarpetaHandle(handle) {
+            const db = await abrirDBCarpeta();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(DB_CARPETA_STORE, 'readwrite');
+                tx.objectStore(DB_CARPETA_STORE).put(handle, 'carpetaDescargas');
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function leerCarpetaHandle() {
+            const db = await abrirDBCarpeta();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(DB_CARPETA_STORE, 'readonly');
+                const req = tx.objectStore(DB_CARPETA_STORE).get('carpetaDescargas');
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function borrarCarpetaHandle() {
+            const db = await abrirDBCarpeta();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(DB_CARPETA_STORE, 'readwrite');
+                tx.objectStore(DB_CARPETA_STORE).delete('carpetaDescargas');
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        let carpetaDescargaFija = null;           // Handle activo (con permiso confirmado) en memoria
+        let carpetaFijaRecordadaPendiente = null;  // Handle recordado, pendiente de reconfirmar permiso
+
+        async function elegirCarpetaFija() {
+            if (!window.showDirectoryPicker) {
+                mostrarNotificacion('Tu navegador no soporta elegir una carpeta fija (usa Chrome o Edge). Se seguirá preguntando la carpeta en cada descarga.', 'warning');
+                return;
+            }
+            try {
+                const handle = await window.showDirectoryPicker();
+                const permiso = await handle.requestPermission({ mode: 'readwrite' });
+                if (permiso !== 'granted') { mostrarNotificacion('No se otorgó permiso sobre la carpeta', 'warning'); return; }
+                carpetaDescargaFija = handle;
+                carpetaFijaRecordadaPendiente = null;
+                await guardarCarpetaHandle(handle);
+                actualizarEtiquetaCarpetaFija();
+                mostrarNotificacion(`📁 Carpeta fija activada: ${handle.name}`, 'success');
+            } catch (e) {
+                if (e.name !== 'AbortError') { console.error('Error al elegir carpeta:', e); mostrarNotificacion('No se pudo activar la carpeta fija', 'warning'); }
+            }
+        }
+
+        async function quitarCarpetaFija() {
+            carpetaDescargaFija = null;
+            carpetaFijaRecordadaPendiente = null;
+            await borrarCarpetaHandle();
+            actualizarEtiquetaCarpetaFija();
+            mostrarNotificacion('Carpeta fija desactivada. Se volverá a preguntar en cada descarga.', 'info');
+        }
+
+        // Al cargar la página, intenta recuperar la carpeta ya elegida antes (sin volver a preguntar cuál es).
+        // Por seguridad, los navegadores piden reconfirmar el PERMISO una vez por sesión: si eso pasa,
+        // se deja la carpeta "recordada" para reactivarla con un solo clic (no hay que elegirla de nuevo).
+        async function intentarRecuperarCarpetaFija() {
+            if (!window.showDirectoryPicker) return;
+            try {
+                const handle = await leerCarpetaHandle();
+                if (!handle) return;
+                const permiso = await handle.queryPermission({ mode: 'readwrite' });
+                if (permiso === 'granted') {
+                    carpetaDescargaFija = handle;
+                } else {
+                    carpetaFijaRecordadaPendiente = handle;
+                }
+            } catch (e) {
+                console.warn('No se pudo recuperar la carpeta fija guardada:', e);
+            }
+            actualizarEtiquetaCarpetaFija();
+        }
+
+        async function reactivarCarpetaFijaPendiente() {
+            if (!carpetaFijaRecordadaPendiente) { elegirCarpetaFija(); return; }
+            try {
+                const permiso = await carpetaFijaRecordadaPendiente.requestPermission({ mode: 'readwrite' });
+                if (permiso === 'granted') {
+                    carpetaDescargaFija = carpetaFijaRecordadaPendiente;
+                    carpetaFijaRecordadaPendiente = null;
+                    actualizarEtiquetaCarpetaFija();
+                    mostrarNotificacion(`📁 Carpeta fija reactivada: ${carpetaDescargaFija.name}`, 'success');
+                }
+            } catch (e) {
+                console.error('No se pudo reactivar la carpeta:', e);
+            }
+        }
+
+        function actualizarEtiquetaCarpetaFija() {
+            const el = document.getElementById('carpetaFijaLabel');
+            const btn = document.getElementById('btnCarpetaFija');
+            const btnQuitar = document.getElementById('btnQuitarCarpetaFija');
+            if (!el || !btn) return;
+
+            if (carpetaDescargaFija) {
+                el.textContent = `📁 Guardando en: ${carpetaDescargaFija.name}`;
+                btn.textContent = '🔄 Cambiar carpeta';
+                btn.onclick = elegirCarpetaFija;
+                if (btnQuitar) btnQuitar.style.display = 'inline-block';
+            } else if (carpetaFijaRecordadaPendiente) {
+                el.textContent = `📁 Carpeta recordada: ${carpetaFijaRecordadaPendiente.name} (confirma el permiso)`;
+                btn.textContent = '✅ Reactivar carpeta';
+                btn.onclick = reactivarCarpetaFijaPendiente;
+                if (btnQuitar) btnQuitar.style.display = 'inline-block';
+            } else {
+                el.textContent = 'Se preguntará la carpeta en cada descarga';
+                btn.textContent = '📁 Elegir carpeta fija';
+                btn.onclick = elegirCarpetaFija;
+                if (btnQuitar) btnQuitar.style.display = 'none';
+            }
+        }
+
         async function descargarArchivo(blob, nombreArchivo, tipoMime) {
+            // 1) Si hay una carpeta fija activa (con permiso ya confirmado), escribir directo ahí sin preguntar nada
+            if (carpetaDescargaFija) {
+                try {
+                    const fileHandle = await carpetaDescargaFija.getFileHandle(nombreArchivo, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    return;
+                } catch (e) {
+                    console.warn('No se pudo escribir en la carpeta fija, se usa el método normal:', e);
+                }
+            }
+
             if (window.showSaveFilePicker) {
                 try {
                     const extension = nombreArchivo.split('.').pop();
@@ -5519,16 +5683,26 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             const fecha = new Date();
             const opciones = { year: 'numeric', month: 'long', day: 'numeric' };
             const fechaStr = fecha.toLocaleDateString('es-PE', opciones);
-            const numDoc = `N° ${String(Date.now()).slice(-6)}`;
 
             // EMPRESA (logo, contacto, banco, footer)
             aplicarEmpresaAlPrint();
 
             // TIPO DE DOCUMENTO
             const tipodoc = document.getElementById('tipoDocumento').value;
+            const tipoContador = tipodoc === 'ORDEN DE COMPRA' ? 'orden_compra' : 'cotizacion';
             const tituloDoc = tipodoc === 'ORDEN DE COMPRA' ? 'ORDEN DE COMPRA' : 'COTIZACIÓN';
             document.getElementById('printTipoDoc').textContent = tituloDoc;
             document.getElementById('printDate').textContent = `Fecha: ${fechaStr}`;
+
+            let numeroCorrelativo = null;
+            try {
+                numeroCorrelativo = await asegurarCorrelativo(tipoContador);
+            } catch (e) {
+                console.error('No se pudo obtener el número correlativo:', e);
+            }
+            const numDoc = numeroCorrelativo !== null
+                ? `N° ${String(numeroCorrelativo).padStart(6, '0')}`
+                : `N° (sin conexión)`;
             document.getElementById('printNumeroCot').textContent = numDoc;
             // "Válido 7 días" solo en cotización
             const validezEl = document.getElementById('printValidezBadge');
@@ -5862,6 +6036,71 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
         // HISTORIAL DE COTIZACIONES (Back4App, en la nube)
         // ============================================
         const CLASE_COTIZACIONES = 'Cotizaciones';
+
+        // ============================================
+        // CORRELATIVO (Cotización y Orden de Compra tienen numeración independiente)
+        // ============================================
+        // IMPORTANTE: antes de usar esto, crea en Back4App la clase "Contadores" con 2 filas:
+        //   { tipo: "cotizacion",   siguienteNumero: 449 }
+        //   { tipo: "orden_compra", siguienteNumero: 449 }
+        // (449 porque el primer número que se entrega es siguienteNumero + 1, o sea 450)
+        // Si no las creas tú, el código las crea solo la primera vez que se necesiten.
+        const CLASE_CONTADORES = 'Contadores';
+        const NUMERO_INICIAL_CORRELATIVO = 450;
+
+        // Incrementa el contador de forma atómica en el servidor y devuelve el número ya asignado.
+        // Como el incremento ocurre en la base de datos (no en el navegador), nunca se reparte
+        // el mismo número dos veces aunque dos personas cotizen exactamente al mismo tiempo.
+        async function obtenerYAvanzarNumeroDocumento(tipo) {
+            const where = encodeURIComponent(JSON.stringify({ tipo }));
+            const buscar = await fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_CONTADORES}?where=${where}`, {
+                headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual?.sessionToken })
+            });
+            const dataBuscar = await buscar.json();
+            let fila = (dataBuscar.results || [])[0];
+
+            if (!fila) {
+                const crear = await fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_CONTADORES}`, {
+                    method: 'POST',
+                    headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual?.sessionToken }),
+                    body: JSON.stringify({ tipo, siguienteNumero: NUMERO_INICIAL_CORRELATIVO - 1 })
+                });
+                if (!crear.ok) throw new Error('No se pudo crear el contador de numeración');
+                const dataCrear = await crear.json();
+                fila = { objectId: dataCrear.objectId };
+            }
+
+            const incrementar = await fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_CONTADORES}/${fila.objectId}`, {
+                method: 'PUT',
+                headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual?.sessionToken }),
+                body: JSON.stringify({ siguienteNumero: { __op: 'Increment', amount: 1 } })
+            });
+            if (!incrementar.ok) throw new Error('No se pudo generar el número de documento');
+            const dataIncrementar = await incrementar.json();
+
+            if (typeof dataIncrementar.siguienteNumero === 'number') {
+                return dataIncrementar.siguienteNumero;
+            }
+            // Respaldo (poco probable): si el servidor no devolvió el valor, se relee
+            const releer = await fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_CONTADORES}/${fila.objectId}`, {
+                headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual?.sessionToken })
+            });
+            const dataReleer = await releer.json();
+            return dataReleer.siguienteNumero;
+        }
+
+        // Devuelve el correlativo de la transacción en curso; si todavía no tiene uno, pide uno nuevo.
+        // Si se vuelve a llamar para la MISMA cotización sin limpiar el carrito, reutiliza el mismo número.
+        async function asegurarCorrelativo(tipoContador) {
+            if (registroEnCurso[tipoContador]?.correlativo) {
+                return registroEnCurso[tipoContador].correlativo;
+            }
+            const numero = await obtenerYAvanzarNumeroDocumento(tipoContador);
+            registroEnCurso[tipoContador] = { objectId: registroEnCurso[tipoContador]?.objectId || null, correlativo: numero };
+            guardarEstado();
+            return numero;
+        }
+
         let historialCache = [];
         let verTodasLasCotizaciones = false; // solo aplica si el usuario es "master"
 
@@ -5878,6 +6117,18 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             const descMonto = subtotal * globalDescPct / 100;
             const totalFinal = mostrarConIGV ? calcularPrecioConIGV(subtotal - descMonto) : (subtotal - descMonto);
 
+            const tipodoc = document.getElementById('tipoDocumento').value;
+            const tipoContador = tipodoc === 'ORDEN DE COMPRA' ? 'orden_compra' : 'cotizacion';
+
+            let correlativo;
+            try {
+                correlativo = await asegurarCorrelativo(tipoContador);
+            } catch (e) {
+                console.error('No se pudo obtener el correlativo:', e);
+                mostrarNotificacion('⚠️ No se pudo generar el número correlativo: ' + e.message, 'warning');
+                return;
+            }
+
             const entrada = {
                 cliente: cliente.nombre || 'Sin nombre',
                 empresaCliente: cliente.empresa || '',
@@ -5888,20 +6139,37 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 total: totalFinal,
                 mostrarConIGV,
                 forzarPorMayor,
+                tipoDocumento: tipoContador,
+                correlativo,
                 activo: true,
                 usuario: usuarioActual?.username || '',
                 usuarioNombre: usuarioActual?.nombre || ''
             };
 
             try {
-                const resp = await fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_COTIZACIONES}`, {
-                    method: 'POST',
-                    headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual?.sessionToken }),
-                    body: JSON.stringify(entrada)
-                });
+                const registroExistente = registroEnCurso[tipoContador];
+                let resp;
+                if (registroExistente?.objectId) {
+                    // Ya existe un registro para esta misma cotización: se actualiza en vez de duplicar
+                    resp = await fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_COTIZACIONES}/${registroExistente.objectId}`, {
+                        method: 'PUT',
+                        headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual?.sessionToken }),
+                        body: JSON.stringify(entrada)
+                    });
+                } else {
+                    resp = await fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_COTIZACIONES}`, {
+                        method: 'POST',
+                        headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual?.sessionToken }),
+                        body: JSON.stringify(entrada)
+                    });
+                }
                 if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err.error || 'HTTP ' + resp.status); }
+                const data = await resp.json();
+                registroEnCurso[tipoContador] = { objectId: registroExistente?.objectId || data.objectId, correlativo };
+                guardarEstado();
                 renderHistorial();
-                mostrarNotificacion('✅ Cotización guardada en la nube', 'success');
+                const etiquetaDoc = tipoContador === 'orden_compra' ? 'Orden de Compra' : 'Cotización';
+                mostrarNotificacion(`✅ ${etiquetaDoc} N° ${String(correlativo).padStart(6, '0')} guardada en la nube`, 'success');
             } catch (e) {
                 console.error('Error al guardar en historial:', e);
                 mostrarNotificacion('⚠️ No se pudo guardar en la nube: ' + e.message, 'warning');
@@ -5945,16 +6213,61 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             const countEl = document.getElementById('historialCount');
             if (countEl) countEl.textContent = historialCache.length;
 
+            // Estructura fija: el input de búsqueda se crea UNA sola vez aquí y nunca se vuelve a
+            // recrear al escribir (si se recreara en cada tecla, el cursor perdería el foco).
+            // Solo el contenido de #historialResultsArea se redibuja en cada búsqueda.
+            const placeholder = (usuarioActual?.nivel === 'master' && verTodasLasCotizaciones && !usuarioSeleccionadoHistorial)
+                ? '🔍 Buscar por N°, cliente, empresa, teléfono o vendedor...'
+                : '🔍 Buscar por N°, cliente, empresa o teléfono...';
+
+            listEl.innerHTML = `
+                <div style="margin-bottom:14px;">
+                    <input type="text" class="form-input" id="historialSearchInput" placeholder="${placeholder}" oninput="pintarResultadosHistorial()">
+                </div>
+                <div id="historialResultsArea"></div>
+            `;
+
+            pintarResultadosHistorial();
+        }
+
+        // Filtra cotizaciones por número correlativo, cliente, empresa o teléfono
+        function filtrarCotizaciones(lista, filtro) {
+            if (!filtro) return lista;
+            return lista.filter(entry => {
+                const correlativoTxt = entry.correlativo ? String(entry.correlativo) : '';
+                return (
+                    correlativoTxt.includes(filtro) ||
+                    (entry.cliente || '').toLowerCase().includes(filtro) ||
+                    (entry.empresaCliente || '').toLowerCase().includes(filtro) ||
+                    (entry.telefono || '').toLowerCase().includes(filtro) ||
+                    (entry.usuarioNombre || '').toLowerCase().includes(filtro)
+                );
+            });
+        }
+
+        // Redibuja solo el área de resultados a partir de lo que ya está en memoria (historialCache).
+        // No toca la red ni recrea el input de búsqueda, así no se pierde el foco al escribir.
+        function pintarResultadosHistorial() {
+            const resultsEl = document.getElementById('historialResultsArea');
+            if (!resultsEl) return;
+            const filtro = (document.getElementById('historialSearchInput')?.value || '').toLowerCase().trim();
+
             if (historialCache.length === 0) {
-                listEl.innerHTML = `<div class="historial-empty">No hay cotizaciones guardadas aún.<br><br>Arma una cotización y haz clic en <strong>"💾 Guardar"</strong>.</div>`;
+                resultsEl.innerHTML = `<div class="historial-empty">No hay cotizaciones guardadas aún.<br><br>Arma una cotización y haz clic en <strong>"💾 Guardar"</strong>.</div>`;
                 return;
             }
 
             const mostrandoTodas = usuarioActual?.nivel === 'master' && verTodasLasCotizaciones;
 
-            // Vista master, nivel 1: lista de usuarios (sin seleccionar ninguno todavía)
+            // Vista master, nivel 1: agrupado por usuario — a menos que haya una búsqueda activa,
+            // en cuyo caso se muestran directo las cotizaciones de TODOS los usuarios que calcen
+            // (así se puede ubicar una cotización puntual sin tener que entrar primero a cada persona).
             if (mostrandoTodas && !usuarioSeleccionadoHistorial) {
-                renderUsuariosHistorial(listEl);
+                if (filtro) {
+                    renderListaCotizaciones(resultsEl, historialCache, true, filtro);
+                } else {
+                    renderUsuariosHistorial(resultsEl);
+                }
                 return;
             }
 
@@ -5963,11 +6276,11 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 ? historialCache.filter(e => (e.usuario || '') === usuarioSeleccionadoHistorial)
                 : historialCache;
 
-            renderListaCotizaciones(listEl, lista, mostrandoTodas);
+            renderListaCotizaciones(resultsEl, lista, mostrandoTodas, filtro);
         }
 
         // Vista master — agrupa las cotizaciones por usuario y muestra una tarjeta por persona
-        function renderUsuariosHistorial(listEl) {
+        function renderUsuariosHistorial(container) {
             const porUsuario = {};
             historialCache.forEach(entry => {
                 const key = entry.usuario || '(sin usuario)';
@@ -5983,8 +6296,8 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
 
             const usuarios = Object.values(porUsuario).sort((a, b) => new Date(b.ultimaFecha) - new Date(a.ultimaFecha));
 
-            listEl.innerHTML = `
-                <div style="margin-bottom:12px;color:var(--auth-ink-soft, #718096);font-size:0.85em;">👥 Selecciona un usuario para ver sus cotizaciones</div>
+            container.innerHTML = `
+                <div style="margin-bottom:12px;color:var(--auth-ink-soft, #718096);font-size:0.85em;">👥 Selecciona un usuario para ver sus cotizaciones, o escribe arriba para buscar en todas a la vez</div>
                 <div class="historial-list">
                     ${usuarios.map(u => {
                         const fecha = new Date(u.ultimaFecha).toLocaleDateString('es-PE', { day:'2-digit', month:'short', year:'numeric' });
@@ -6009,19 +6322,28 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
 
         function verHistorialDeUsuario(username) {
             usuarioSeleccionadoHistorial = username;
-            renderHistorial();
+            const input = document.getElementById('historialSearchInput');
+            if (input) input.value = '';
+            pintarResultadosHistorial();
         }
 
         function volverAUsuariosHistorial() {
             usuarioSeleccionadoHistorial = null;
-            renderHistorial();
+            const input = document.getElementById('historialSearchInput');
+            if (input) input.value = '';
+            pintarResultadosHistorial();
         }
 
-        // Renderiza una lista plana de tarjetas de cotización (propia, o de un usuario puntual dentro de la vista master)
-        function renderListaCotizaciones(listEl, lista, mostrandoTodas) {
+        // Renderiza una lista plana de tarjetas de cotización (propia, de un usuario puntual,
+        // o de todos los usuarios cuando el master está buscando desde la vista agrupada)
+        function renderListaCotizaciones(container, listaCompleta, mostrandoTodas, filtro) {
+            const lista = filtrarCotizaciones(listaCompleta, filtro || '');
+
             const nombreUsuarioActivo = mostrandoTodas && usuarioSeleccionadoHistorial
-                ? (lista[0]?.usuarioNombre || usuarioSeleccionadoHistorial)
+                ? (listaCompleta[0]?.usuarioNombre || usuarioSeleccionadoHistorial)
                 : null;
+
+            const mostrarVendedorPorTarjeta = mostrandoTodas && !nombreUsuarioActivo;
 
             const encabezado = nombreUsuarioActivo
                 ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
@@ -6031,17 +6353,24 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 : '';
 
             if (lista.length === 0) {
-                listEl.innerHTML = `${encabezado}<div class="historial-empty">Este usuario no tiene cotizaciones visibles.</div>`;
+                container.innerHTML = `${encabezado}<div class="historial-empty">${filtro ? 'Sin resultados para tu búsqueda.' : 'No hay cotizaciones visibles.'}</div>`;
                 return;
             }
 
-            listEl.innerHTML = `${encabezado}<div class="historial-list">${lista.map((entry) => {
+            container.innerHTML = `${encabezado}<div class="historial-list">${lista.map((entry) => {
                 const fecha = new Date(entry.createdAt).toLocaleDateString('es-PE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
                 const numProductos = entry.productos.length;
                 const totalUnid = entry.productos.reduce((a, p) => a + p.cantidad, 0);
+                const esOrdenCompra = entry.tipoDocumento === 'orden_compra';
+                const correlativoTexto = entry.correlativo ? `N° ${String(entry.correlativo).padStart(6, '0')}` : 'N° —';
                 return `
                     <div class="historial-card">
                         <div class="historial-card-left">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+                                <span style="font-weight:800;font-size:0.95em;padding:2px 10px;border-radius:6px;background:${esOrdenCompra ? '#fed7aa' : '#e0e7ff'};color:${esOrdenCompra ? '#9a3412' : '#3730a3'};">${correlativoTexto}</span>
+                                <span style="font-size:0.72em;font-weight:700;color:${esOrdenCompra ? '#9a3412' : '#3730a3'};">${esOrdenCompra ? '📦 ORDEN DE COMPRA' : '📋 COTIZACIÓN'}</span>
+                                ${mostrarVendedorPorTarjeta ? `<span style="font-size:0.72em;font-weight:700;color:#4a5568;background:#edf2f7;padding:2px 8px;border-radius:6px;">🧑‍💼 ${entry.usuarioNombre || entry.usuario || 'Desconocido'}</span>` : ''}
+                            </div>
                             <div class="historial-card-title">👤 ${entry.cliente}${entry.empresaCliente ? ' — ' + entry.empresaCliente : ''}</div>
                             <div class="historial-card-meta">
                                 <span>📅 ${fecha}</span>
@@ -6078,13 +6407,19 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             document.getElementById('clienteNombre').value = entry.cliente === 'Sin nombre' ? '' : entry.cliente;
             document.getElementById('clienteEmpresa').value = entry.empresaCliente || '';
             document.getElementById('clienteTelefono').value = entry.telefono || '';
+
+            // Restaurar tipo de documento y continuar con el MISMO correlativo (no se pide uno nuevo)
+            const tipoContador = entry.tipoDocumento === 'orden_compra' ? 'orden_compra' : 'cotizacion';
+            document.getElementById('tipoDocumento').value = tipoContador === 'orden_compra' ? 'ORDEN DE COMPRA' : 'cotizacion';
+            registroEnCurso[tipoContador] = { objectId: entry.objectId, correlativo: entry.correlativo || null };
+
             actualizarResumenCliente();
             renderTable();
             guardarEstado();
             if (sucursalSeleccionada) mostrarSucursalSeleccionada();
             renderSucursales();
             switchTabById('cotizar');
-            mostrarNotificacion('📂 Cotización cargada', 'success');
+            mostrarNotificacion(`📂 Cotización N° ${entry.correlativo ? String(entry.correlativo).padStart(6,'0') : '—'} cargada`, 'success');
         }
 
         // "Eliminar" no borra el registro de la base de datos: solo lo oculta (activo: true -> false)
@@ -6371,6 +6706,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             renderPickerFicha();
             migrarHistorialLocalSiExiste();
             aplicarVisibilidadRecuperarHistorial();
+            intentarRecuperarCarpetaFija();
             console.log('✅ Cotizador cargado correctamente');
             console.log(`📦 ${productosDB.length} productos disponibles`);
             console.log(`🚚 ${sucursalesDB.length} sucursales disponibles`);

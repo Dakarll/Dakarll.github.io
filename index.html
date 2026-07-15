@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -2247,34 +2248,6 @@
             <div class="subtitle">Sistema Integrado de Cotización y Envíos a Provincias · v5.1 — Historial · Descuentos · Multi-color · Clientes DB</div>
         </div>
 
-       <!--<div class="info-banner">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <span style="flex: 1; min-width: 200px;">⚡ Precio automático: 6+ unidades = Por Mayor | Menos de 6 = Por Menor</span>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;"> -->
-                    <!-- Toggle IGV -->
-          <!--           <div class="igv-toggle-container">
-                        <label class="igv-toggle">
-                            <input type="checkbox" id="toggleIGV" onchange="toggleIGVPrecios()">
-                            <span class="igv-slider"></span>
-                        </label>
-                        <span style="margin-left: 10px; font-weight: 600;">
-                            <span id="igvStatusText">Precios SIN IGV</span>
-                        </span>
-                    </div> -->
-                    <!-- Toggle Forzar Por Mayor -->
-            <!--         <div class="igv-toggle-container">
-                        <label class="igv-toggle">
-                            <input type="checkbox" id="toggleForzarMayor" onchange="toggleForzarPorMayor()">
-                            <span class="igv-slider"></span>
-                        </label>
-                        <span style="margin-left: 10px; font-weight: 600;">
-                            <span id="mayorStatusText">Precio AUTO</span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div> -->
-
 
         <div class="content">
             <!-- TABS -->
@@ -2601,7 +2574,10 @@
             <strong style="font-size:1.1em; color:var(--primary);">🕓 Historial de Cotizaciones</strong>
             <span class="historial-count-badge" id="historialCount">0</span>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-small" id="btnExportarHistorialLocal" onclick="exportarHistorialLocal()" style="display:none;font-size:0.8em;background:#e6fffa;color:#234e52;">📤 Exportar historial local (temporal)</button>
+            <button class="btn btn-small" id="btnImportarHistorial" onclick="document.getElementById('inputImportarHistorial').click()" style="display:none;font-size:0.8em;background:#fefcbf;color:#744210;">📥 Importar cotizaciones desde archivo</button>
+            <input type="file" id="inputImportarHistorial" accept="application/json" style="display:none;" onchange="importarHistorialDesdeArchivo(event)">
             <button class="btn btn-small" id="btnToggleMaster" onclick="toggleVerTodasCotizaciones()" style="display:none;font-size:0.8em;background:#edf2f7;color:var(--primary);">👥 Ver todas</button>
             <button class="btn btn-danger btn-small" onclick="limpiarHistorial()" style="font-size:0.8em;">🗑️ Ocultar todo</button>
         </div>
@@ -3307,13 +3283,23 @@ async function verificarSesionGuardada() {
     const guardada = localStorage.getItem('sesionUsuario');
     if (!guardada) { mostrarLogin(); return; }
 
+    const sesion = JSON.parse(guardada);
+
     try {
-        const sesion = JSON.parse(guardada);
         const resp = await fetch(`${BACK4APP_CONFIG.serverUrl}/users/me`, {
             headers: headersBack4App({ 'X-Parse-Session-Token': sesion.sessionToken })
         });
         const data = await resp.json();
-        if (!resp.ok) throw new Error('Sesión expirada');
+
+        if (!resp.ok) {
+            // Solo cerramos sesión si el servidor confirma que el token ya no es válido (código 209/401).
+            // Cualquier otro problema (servidor caído, etc.) no debe expulsar al usuario.
+            if (resp.status === 401 || data.code === 209) throw new Error('Sesión expirada');
+            console.warn('No se pudo validar la sesión (posible problema de red), se continúa con los datos guardados.');
+            usuarioActual = sesion;
+            mostrarApp();
+            return;
+        }
 
         // Refresca nombre/nivel por si el admin los cambió desde el dashboard
         usuarioActual = {
@@ -3326,9 +3312,16 @@ async function verificarSesionGuardada() {
         localStorage.setItem('sesionUsuario', JSON.stringify(usuarioActual));
         mostrarApp();
     } catch (e) {
-        console.warn('Sesión no válida, se pide iniciar sesión de nuevo:', e.message);
-        localStorage.removeItem('sesionUsuario');
-        mostrarLogin();
+        if (e.message === 'Sesión expirada') {
+            console.warn('Sesión inválida, se pide iniciar sesión de nuevo.');
+            localStorage.removeItem('sesionUsuario');
+            mostrarLogin();
+        } else {
+            // Error de red u otro imprevisto: mantenemos la sesión abierta con los datos que ya teníamos
+            console.warn('No se pudo contactar al servidor, se continúa con la sesión guardada localmente:', e.message);
+            usuarioActual = sesion;
+            mostrarApp();
+        }
     }
 }
 
@@ -4559,70 +4552,9 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             return cantidad >= 6 ? 'Por Mayor' : 'Por Menor';
         }
 
-        // Toggle de IGV
-        function toggleIGVPrecios() {
-            const checkbox = document.getElementById('toggleIGV');
-            mostrarConIGV = checkbox.checked;
-            
-            // Actualizar texto del estado
-            const statusText = document.getElementById('igvStatusText');
-            statusText.textContent = mostrarConIGV ? 'Precios CON IGV' : 'Precios SIN IGV';
-            statusText.style.color = mostrarConIGV ? '#48bb78' : 'inherit';
-            
-            // Guardar preferencia
-            localStorage.setItem('mostrar_igv', mostrarConIGV);
-            
-            // Re-renderizar todas las vistas
-            renderTable();
-            renderProductList();
-            
-            mostrarNotificacion(
-                mostrarConIGV ? '✅ Mostrando precios CON IGV (18%)' : 'ℹ️ Mostrando precios SIN IGV',
-                mostrarConIGV ? 'success' : 'info'
-            );
-        }
-
-        // Toggle de Forzar Por Mayor
-        function toggleForzarPorMayor() {
-            const checkbox = document.getElementById('toggleForzarMayor');
-            forzarPorMayor = checkbox.checked;
-            
-            // Actualizar texto del estado
-            const statusText = document.getElementById('mayorStatusText');
-            statusText.textContent = forzarPorMayor ? 'Siempre POR MAYOR' : 'Precio AUTO';
-            statusText.style.color = forzarPorMayor ? '#667eea' : 'inherit';
-            
-            // Guardar preferencia
-            localStorage.setItem('forzar_por_mayor', forzarPorMayor);
-            
-            // Re-renderizar todas las vistas
-            renderTable();
-            
-            mostrarNotificacion(
-                forzarPorMayor ? '📦 Forzando precio POR MAYOR en todos los productos' : 'ℹ️ Precio automático activado',
-                forzarPorMayor ? 'success' : 'info'
-            );
-        }
-
-        // Cargar preferencias guardadas
+        // Cargar preferencias guardadas (IGV y Forzar Por Mayor quedaron desactivados; la barra se eliminó)
         function cargarPreferencias() {
-            // Cargar IGV
-            const savedIGV = localStorage.getItem('mostrar_igv');
-            if (savedIGV !== null) {
-                mostrarConIGV = savedIGV === 'true';
-                document.getElementById('toggleIGV').checked = mostrarConIGV;
-                document.getElementById('igvStatusText').textContent = mostrarConIGV ? 'Precios CON IGV' : 'Precios SIN IGV';
-                document.getElementById('igvStatusText').style.color = mostrarConIGV ? '#48bb78' : 'inherit';
-            }
-            
-            // Cargar Forzar Por Mayor
-            const savedMayor = localStorage.getItem('forzar_por_mayor');
-            if (savedMayor !== null) {
-                forzarPorMayor = savedMayor === 'true';
-                document.getElementById('toggleForzarMayor').checked = forzarPorMayor;
-                document.getElementById('mayorStatusText').textContent = forzarPorMayor ? 'Siempre POR MAYOR' : 'Precio AUTO';
-                document.getElementById('mayorStatusText').style.color = forzarPorMayor ? '#667eea' : 'inherit';
-            }
+            // mostrarConIGV y forzarPorMayor permanecen en false (sin controles visibles en la interfaz)
         }
 
         // ============================================
@@ -5429,8 +5361,53 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
         }
 
         // ============================================
-        // GENERACIÓN DE IMAGEN
+        // NOMBRE DE ARCHIVO Y DESCARGA CON CARPETA A ELECCIÓN
         // ============================================
+
+        // Genera el nombre según: tipo de documento + empresa + fecha + hora
+        // Ej: cotizacion_fabexsa_15-07-2026_14-30.png
+        function generarNombreArchivo(extension) {
+            const tipoDocSelect = document.getElementById('tipoDocumento');
+            const tipoDoc = (tipoDocSelect && tipoDocSelect.value === 'ORDEN DE COMPRA') ? 'orden_compra' : 'cotizacion';
+            const empresaNombre = (typeof empresaActiva !== 'undefined' && empresaActiva === 'confortline') ? 'confortline' : 'fabexsa';
+
+            const ahora = new Date();
+            const fecha = `${String(ahora.getDate()).padStart(2, '0')}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${ahora.getFullYear()}`;
+            const hora = `${String(ahora.getHours()).padStart(2, '0')}-${String(ahora.getMinutes()).padStart(2, '0')}`;
+
+            return `${tipoDoc}_${empresaNombre}_${fecha}_${hora}.${extension}`;
+        }
+
+        // Descarga un archivo (Blob). En Chrome/Edge permite elegir la carpeta de destino;
+        // en navegadores que no lo soportan (Firefox/Safari), usa la descarga estándar.
+        async function descargarArchivo(blob, nombreArchivo, tipoMime) {
+            if (window.showSaveFilePicker) {
+                try {
+                    const extension = nombreArchivo.split('.').pop();
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: nombreArchivo,
+                        types: [{ description: 'Archivo', accept: { [tipoMime]: ['.' + extension] } }]
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    return;
+                } catch (e) {
+                    if (e.name === 'AbortError') return; // el usuario cerró el diálogo sin elegir carpeta
+                    console.warn('No se pudo usar el selector de carpeta, se usa descarga estándar:', e);
+                }
+            }
+            // Respaldo: descarga estándar del navegador (carpeta de Descargas por defecto)
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = nombreArchivo;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        }
+
 
         async function generarImagen() {
             if (productosEnTabla.length === 0) {
@@ -5456,10 +5433,8 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                     height: element.scrollHeight
                 });
 
-                const link = document.createElement('a');
-                link.download = `Cotizacion_LineaHotelera_${Date.now()}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                await descargarArchivo(blob, generarNombreArchivo('png'), 'image/png');
 
                 showLoading(false);
                 mostrarNotificacion('✅ Imagen generada exitosamente', 'success');
@@ -5523,7 +5498,8 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                     heightLeft -= pageHeight;
                 }
 
-                pdf.save(`Cotizacion_LineaHotelera_${Date.now()}.pdf`);
+                const pdfBlob = pdf.output('blob');
+                await descargarArchivo(pdfBlob, generarNombreArchivo('pdf'), 'application/pdf');
 
                 showLoading(false);
                 mostrarNotificacion('✅ PDF generado exitosamente', 'success');
@@ -6195,6 +6171,97 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             mostrarNotificacion(`✅ ${migradas} de ${historialLocal.length} cotización(es) migradas a la nube`, 'success');
         }
 
+        // ============================================
+        // RECUPERAR HISTORIAL DE UN NAVEGADOR/ARCHIVO ANTIGUO (CASO PUNTUAL)
+        // ============================================
+        // Cambia esto a "false" para ocultar ambos botones (exportar/importar) una vez
+        // que ya no se necesiten. No afecta ninguna otra parte de la app.
+        const HABILITAR_RECUPERAR_HISTORIAL_LOCAL = true;
+
+        function aplicarVisibilidadRecuperarHistorial() {
+            const btnExportar = document.getElementById('btnExportarHistorialLocal');
+            const btnImportar = document.getElementById('btnImportarHistorial');
+            const visible = HABILITAR_RECUPERAR_HISTORIAL_LOCAL ? 'inline-block' : 'none';
+            if (btnExportar) btnExportar.style.display = visible;
+            if (btnImportar) btnImportar.style.display = visible;
+        }
+
+        // Para la persona que todavía usa el archivo HTML local (no la web): exporta lo que
+        // tiene guardado en su navegador a un archivo .json que luego se sube con "Importar".
+        function exportarHistorialLocal() {
+            let historialLocal = [];
+            try { historialLocal = JSON.parse(localStorage.getItem('historial_lh') || '[]'); } catch (e) { historialLocal = []; }
+
+            if (historialLocal.length === 0) {
+                mostrarNotificacion('Este navegador no tiene cotizaciones locales guardadas para exportar', 'info');
+                return;
+            }
+
+            const blob = new Blob([JSON.stringify(historialLocal, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `historial_local_backup_${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            mostrarNotificacion(`📤 Se exportaron ${historialLocal.length} cotización(es). Envía ese archivo para importarlo.`, 'success');
+        }
+
+        // Sube al usuario actualmente logueado el contenido de un archivo .json exportado con el botón de arriba
+        async function importarHistorialDesdeArchivo(event) {
+            const archivo = event.target.files[0];
+            if (!archivo) return;
+
+            try {
+                const texto = await archivo.text();
+                const entradas = JSON.parse(texto);
+                if (!Array.isArray(entradas) || entradas.length === 0) {
+                    mostrarNotificacion('El archivo no tiene cotizaciones válidas', 'warning');
+                    return;
+                }
+
+                if (!confirm(`¿Importar ${entradas.length} cotización(es) a la cuenta de ${usuarioActual.nombre}?`)) return;
+
+                mostrarNotificacion(`⏳ Importando ${entradas.length} cotización(es)...`, 'info');
+                let importadas = 0;
+                for (const entry of entradas) {
+                    try {
+                        const resp = await fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_COTIZACIONES}`, {
+                            method: 'POST',
+                            headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual.sessionToken }),
+                            body: JSON.stringify({
+                                cliente: entry.cliente || 'Sin nombre',
+                                empresaCliente: entry.empresa || entry.empresaCliente || '',
+                                telefono: entry.telefono || '',
+                                productos: entry.productos || [],
+                                sucursal: entry.sucursal || null,
+                                globalDescPct: entry.globalDescPct || 0,
+                                total: entry.total || 0,
+                                mostrarConIGV: !!entry.mostrarConIGV,
+                                forzarPorMayor: !!entry.forzarPorMayor,
+                                activo: true,
+                                usuario: usuarioActual.username,
+                                usuarioNombre: usuarioActual.nombre
+                            })
+                        });
+                        if (resp.ok) importadas++;
+                    } catch (e) {
+                        console.error('Error importando una cotización:', e);
+                    }
+                }
+
+                mostrarNotificacion(`✅ ${importadas} de ${entradas.length} cotización(es) importadas`, 'success');
+                renderHistorial();
+            } catch (e) {
+                console.error('Error al leer el archivo de importación:', e);
+                mostrarNotificacion('⚠️ El archivo no tiene un formato válido', 'warning');
+            } finally {
+                event.target.value = ''; // permite volver a elegir el mismo archivo si hace falta
+            }
+        }
+
         function switchTabById(tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -6303,6 +6370,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             if (fichaCatBtn) { document.querySelectorAll('.ficha-cat-btn').forEach(b => b.classList.remove('active')); fichaCatBtn.classList.add('active'); }
             renderPickerFicha();
             migrarHistorialLocalSiExiste();
+            aplicarVisibilidadRecuperarHistorial();
             console.log('✅ Cotizador cargado correctamente');
             console.log(`📦 ${productosDB.length} productos disponibles`);
             console.log(`🚚 ${sucursalesDB.length} sucursales disponibles`);

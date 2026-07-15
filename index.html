@@ -3809,10 +3809,11 @@ function mostrarApp() {
             const columnas = Object.keys(filas[0]);
             thead.innerHTML = columnas.map(c => `<th>${c}</th>`).join('');
 
-            const filtro = (document.getElementById('kardexSearchInput')?.value || '').toLowerCase().trim();
-            const filtradas = !filtro ? filas : filas.filter(fila =>
-                columnas.some(c => String(fila[c]).toLowerCase().includes(filtro))
-            );
+const filtro = (document.getElementById('kardexSearchInput')?.value || '').toLowerCase().trim();
+const palabras = filtro.split(/\s+/).filter(Boolean);
+const filtradas = palabras.length === 0 ? filas : filas.filter(fila =>
+    palabras.every(palabra => columnas.some(c => String(fila[c]).toLowerCase().includes(palabra)))
+);
 
             document.getElementById('kardexCount').textContent = filtradas.length;
 

@@ -9,6 +9,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
         * {
@@ -25,7 +28,256 @@
             --danger: #f56565;
             --border: #e2e8f0;
             --bg-light: #f7fafc;
+
+            /* Paleta de la pantalla de acceso (elegante, formal, clara) */
+            --auth-ink: #2c3540;
+            --auth-ink-soft: #6b7480;
+            --auth-gold: #b08d57;
+            --auth-gold-light: #d9c19b;
+            --auth-cream: #ffffff;
+            --auth-bg-1: #faf7f2;
+            --auth-bg-2: #f1e9db;
+            --auth-line: #e9e2d5;
         }
+
+        /* ============================================
+           PANTALLA DE ACCESO
+           ============================================ */
+        #authScreen {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(155deg, var(--auth-bg-1) 0%, var(--auth-bg-2) 100%);
+            padding: 24px;
+        }
+
+        #authScreen.hidden {
+            display: none;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 420px;
+            background: var(--auth-cream);
+            border-radius: 18px;
+            box-shadow: 0 20px 55px rgba(44, 53, 64, 0.12), 0 2px 8px rgba(44, 53, 64, 0.06);
+            padding: 46px 40px 38px;
+            position: relative;
+            overflow: hidden;
+            animation: authFadeIn 0.5s ease;
+        }
+
+        @keyframes authFadeIn {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--auth-gold-light), var(--auth-gold), var(--auth-gold-light));
+        }
+
+        .auth-brand {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .auth-brand-mark {
+            width: 54px;
+            height: 54px;
+            margin: 0 auto 14px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, var(--auth-gold-light), var(--auth-gold));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            box-shadow: 0 8px 18px rgba(176, 141, 87, 0.35);
+        }
+
+        .auth-brand h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2em;
+            font-weight: 600;
+            color: var(--auth-ink);
+            letter-spacing: 0.5px;
+        }
+
+        .auth-brand p {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.78em;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--auth-gold);
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 4px;
+            background: #efe9df;
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 26px;
+        }
+
+        .auth-tab-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 9px 0;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.82em;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            color: var(--auth-ink-soft);
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .auth-tab-btn.active {
+            background: var(--auth-ink);
+            color: var(--auth-gold-light);
+            box-shadow: 0 4px 10px rgba(26,35,50,0.25);
+        }
+
+        .auth-field {
+            margin-bottom: 18px;
+        }
+
+        .auth-field label {
+            display: block;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.72em;
+            font-weight: 600;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: var(--auth-ink-soft);
+            margin-bottom: 7px;
+        }
+
+        .auth-field input,
+        .auth-field select {
+            width: 100%;
+            padding: 12px 14px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95em;
+            border: 1.5px solid var(--auth-line);
+            border-radius: 9px;
+            background: white;
+            color: var(--auth-ink);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .auth-field input:focus,
+        .auth-field select:focus {
+            outline: none;
+            border-color: var(--auth-gold);
+            box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.15);
+        }
+
+        .auth-submit {
+            width: 100%;
+            padding: 13px 0;
+            margin-top: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.92em;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            color: var(--auth-cream);
+            background: linear-gradient(135deg, var(--auth-ink) 0%, #2a3850 100%);
+            border: none;
+            border-radius: 9px;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: 0 10px 20px rgba(26,35,50,0.25);
+        }
+
+        .auth-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 26px rgba(26,35,50,0.3);
+        }
+
+        .auth-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-error {
+            display: none;
+            background: #fdf2f2;
+            border: 1px solid #f5c6c6;
+            color: #a83232;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.82em;
+            padding: 10px 13px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .auth-form { display: none; }
+        .auth-form.active { display: block; }
+
+        .auth-footer-note {
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.72em;
+            color: #9aa5b1;
+            margin-top: 22px;
+            letter-spacing: 0.3px;
+        }
+
+        /* Insignia de usuario en el header, una vez autenticado */
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 24px;
+            padding: 6px 8px 6px 14px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.82em;
+            color: white;
+        }
+
+        .user-badge-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, var(--auth-gold-light), var(--auth-gold));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85em;
+            color: var(--auth-ink);
+        }
+
+        .user-badge button {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            border-radius: 16px;
+            padding: 5px 12px;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .user-badge button:hover {
+            background: rgba(255,255,255,0.28);
+        }
+
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -46,6 +298,7 @@
             padding: 20px;
             border-radius: 12px 12px 0 0;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
         }
 
         .header h1 {
@@ -1459,16 +1712,16 @@
             font-size: 0.82em;
             margin-right: 3px;
         }
-        .global-discount-row {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            row-gap: 6px;
-            gap: 10px;
-            margin-top: 8px;
-            font-size: 0.88em;
-            opacity: 0.9;
-        }
+.global-discount-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    row-gap: 6px;
+    gap: 10px;
+    margin-top: 8px;
+    font-size: 0.88em;
+    opacity: 0.9;
+}
         .global-discount-input {
             width: 60px;
             padding: 4px 8px;
@@ -1661,6 +1914,12 @@
                 padding: 15px;
             }
 
+            .user-badge {
+                position: static !important;
+                margin-bottom: 10px;
+                width: fit-content;
+            }
+
             .content {
                 padding: 15px;
             }
@@ -1755,6 +2014,34 @@
     </style>
 </head>
 <body>
+    <!-- PANTALLA DE ACCESO -->
+    <div id="authScreen">
+        <div class="auth-card">
+            <div class="auth-brand">
+                <div class="auth-brand-mark">🏨</div>
+                <h1>Cotizador Profesional</h1>
+                <p>Fabexsa · Confort Line</p>
+            </div>
+
+            <div class="auth-error" id="authError"></div>
+
+            <!-- FORMULARIO: INICIAR SESIÓN -->
+            <form class="auth-form active" id="authFormLogin" onsubmit="iniciarSesion(event)">
+                <div class="auth-field">
+                    <label>Usuario</label>
+                    <input type="text" id="loginUsuario" autocomplete="username" required>
+                </div>
+                <div class="auth-field">
+                    <label>Contraseña</label>
+                    <input type="password" id="loginPassword" autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="auth-submit" id="btnLogin">Ingresar</button>
+            </form>
+
+            <div class="auth-footer-note">Acceso exclusivo del equipo Fabexsa · Confort Line</div>
+        </div>
+    </div>
+
     <!-- LOADING OVERLAY -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
@@ -1949,18 +2236,23 @@
     </div>
 
     <!-- SISTEMA DE COTIZACIÓN -->
-    <div class="container">
+    <div class="container" id="appContainer" style="display:none;">
         <div class="header">
+            <div class="user-badge" id="userBadge" style="position:absolute;top:16px;right:20px;display:none;">
+                <div class="user-badge-avatar" id="userBadgeAvatar">?</div>
+                <span id="userBadgeNombre">—</span>
+                <button type="button" onclick="cerrarSesion()">Salir</button>
+            </div>
             <h1>🏨 Cotizador Profesional</h1>
             <div class="subtitle">Sistema Integrado de Cotización y Envíos a Provincias · v5.1 — Historial · Descuentos · Multi-color · Clientes DB</div>
         </div>
 
-        <div class="info-banner">
+       <!--<div class="info-banner">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <span style="flex: 1; min-width: 200px;">⚡ Precio automático: 6+ unidades = Por Mayor | Menos de 6 = Por Menor</span>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;"> -->
                     <!-- Toggle IGV -->
-                    <div class="igv-toggle-container">
+          <!--           <div class="igv-toggle-container">
                         <label class="igv-toggle">
                             <input type="checkbox" id="toggleIGV" onchange="toggleIGVPrecios()">
                             <span class="igv-slider"></span>
@@ -1968,9 +2260,9 @@
                         <span style="margin-left: 10px; font-weight: 600;">
                             <span id="igvStatusText">Precios SIN IGV</span>
                         </span>
-                    </div>
+                    </div> -->
                     <!-- Toggle Forzar Por Mayor -->
-                    <div class="igv-toggle-container">
+            <!--         <div class="igv-toggle-container">
                         <label class="igv-toggle">
                             <input type="checkbox" id="toggleForzarMayor" onchange="toggleForzarPorMayor()">
                             <span class="igv-slider"></span>
@@ -1981,7 +2273,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> -->
 
 
         <div class="content">
@@ -2309,7 +2601,10 @@
             <strong style="font-size:1.1em; color:var(--primary);">🕓 Historial de Cotizaciones</strong>
             <span class="historial-count-badge" id="historialCount">0</span>
         </div>
-        <button class="btn btn-danger btn-small" onclick="limpiarHistorial()" style="font-size:0.8em;">🗑️ Limpiar todo</button>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn btn-small" id="btnToggleMaster" onclick="toggleVerTodasCotizaciones()" style="display:none;font-size:0.8em;background:#edf2f7;color:var(--primary);">👥 Ver todas</button>
+            <button class="btn btn-danger btn-small" onclick="limpiarHistorial()" style="font-size:0.8em;">🗑️ Ocultar todo</button>
+        </div>
     </div>
     <div id="historialList">
         <div class="historial-empty">No hay cotizaciones guardadas aún.<br><br>Después de armar una cotización, haz clic en <strong>"💾 Guardar"</strong> o genera un PDF/Imagen para guardarla automáticamente.</div>
@@ -2943,6 +3238,135 @@ async function generarFichaPDF() {
         showLoading(false);
         mostrarNotificacion('❌ Error al generar ficha técnica', 'error');
     }
+}
+
+// ============================================
+// AUTENTICACIÓN — Parse User (Back4App)
+// ============================================
+let usuarioActual = null; // { objectId, username, nombre, sessionToken }
+
+function headersBack4App(extra = {}) {
+    return Object.assign({
+        'X-Parse-Application-Id': BACK4APP_CONFIG.appId,
+        'X-Parse-REST-API-Key': BACK4APP_CONFIG.restApiKey,
+        'Content-Type': 'application/json'
+    }, extra);
+}
+
+function mostrarErrorAuth(mensaje) {
+    const el = document.getElementById('authError');
+    el.textContent = mensaje;
+    el.style.display = 'block';
+}
+
+function ocultarErrorAuth() {
+    document.getElementById('authError').style.display = 'none';
+}
+
+async function iniciarSesion(event) {
+    event.preventDefault();
+    ocultarErrorAuth();
+    const btn = document.getElementById('btnLogin');
+    const usuario = document.getElementById('loginUsuario').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    try {
+        btn.disabled = true;
+        btn.textContent = 'Ingresando...';
+
+        const url = `${BACK4APP_CONFIG.serverUrl}/login?username=${encodeURIComponent(usuario)}&password=${encodeURIComponent(password)}`;
+        const resp = await fetch(url, { headers: headersBack4App() });
+        const data = await resp.json();
+
+        if (!resp.ok) throw new Error(data.error || 'Usuario o contraseña incorrectos');
+
+        guardarSesion(data);
+        mostrarApp();
+    } catch (e) {
+        console.error('Error al iniciar sesión:', e);
+        mostrarErrorAuth(e.message || 'No se pudo iniciar sesión');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Ingresar';
+    }
+}
+
+function guardarSesion(data) {
+    usuarioActual = {
+        objectId: data.objectId,
+        username: data.username,
+        nombre: data.nombre || data.username,
+        nivel: data.categoria === 'master' ? 'master' : 'estandar',
+        sessionToken: data.sessionToken
+    };
+    localStorage.setItem('sesionUsuario', JSON.stringify(usuarioActual));
+}
+
+// Verifica si hay una sesión guardada y si el token todavía es válido en Back4App
+async function verificarSesionGuardada() {
+    const guardada = localStorage.getItem('sesionUsuario');
+    if (!guardada) { mostrarLogin(); return; }
+
+    try {
+        const sesion = JSON.parse(guardada);
+        const resp = await fetch(`${BACK4APP_CONFIG.serverUrl}/users/me`, {
+            headers: headersBack4App({ 'X-Parse-Session-Token': sesion.sessionToken })
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error('Sesión expirada');
+
+        // Refresca nombre/nivel por si el admin los cambió desde el dashboard
+        usuarioActual = {
+            objectId: data.objectId,
+            username: data.username,
+            nombre: data.nombre || data.username,
+            nivel: data.categoria === 'master' ? 'master' : 'estandar',
+            sessionToken: sesion.sessionToken
+        };
+        localStorage.setItem('sesionUsuario', JSON.stringify(usuarioActual));
+        mostrarApp();
+    } catch (e) {
+        console.warn('Sesión no válida, se pide iniciar sesión de nuevo:', e.message);
+        localStorage.removeItem('sesionUsuario');
+        mostrarLogin();
+    }
+}
+
+async function cerrarSesion() {
+    try {
+        if (usuarioActual?.sessionToken) {
+            await fetch(`${BACK4APP_CONFIG.serverUrl}/logout`, {
+                method: 'POST',
+                headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual.sessionToken })
+            });
+        }
+    } catch (e) {
+        console.warn('No se pudo cerrar sesión en el servidor:', e);
+    }
+    localStorage.removeItem('sesionUsuario');
+    usuarioActual = null;
+    document.getElementById('appContainer').style.display = 'none';
+    document.getElementById('userBadge').style.display = 'none';
+    document.getElementById('authScreen').classList.remove('hidden');
+    document.getElementById('loginUsuario').value = '';
+    document.getElementById('loginPassword').value = '';
+}
+
+function mostrarLogin() {
+    document.getElementById('authScreen').classList.remove('hidden');
+    document.getElementById('appContainer').style.display = 'none';
+}
+
+function mostrarApp() {
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('appContainer').style.display = 'block';
+
+    const badge = document.getElementById('userBadge');
+    badge.style.display = 'flex';
+    document.getElementById('userBadgeNombre').textContent = usuarioActual.nombre;
+    document.getElementById('userBadgeAvatar').textContent = (usuarioActual.nombre || '?').trim().charAt(0).toUpperCase();
+
+    if (typeof inicializarAppPostLogin === 'function') inicializarAppPostLogin();
 }
 </script>
 
@@ -5459,15 +5883,13 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
         }
 
         // ============================================
-        // HISTORIAL DE COTIZACIONES
+        // HISTORIAL DE COTIZACIONES (Back4App, en la nube)
         // ============================================
+        const CLASE_COTIZACIONES = 'Cotizaciones';
+        let historialCache = [];
+        let verTodasLasCotizaciones = false; // solo aplica si el usuario es "master"
 
-        function getHistorialDB() {
-            try { return JSON.parse(localStorage.getItem('historial_lh') || '[]'); }
-            catch(e) { return []; }
-        }
-
-        function guardarEnHistorial() {
+        async function guardarEnHistorial() {
             if (productosEnTabla.length === 0) { mostrarNotificacion('Agrega productos primero', 'warning'); return; }
             const cliente = getClienteData();
             const globalDescPct = parseFloat(document.getElementById('globalDiscount').value) || 0;
@@ -5481,47 +5903,170 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             const totalFinal = mostrarConIGV ? calcularPrecioConIGV(subtotal - descMonto) : (subtotal - descMonto);
 
             const entrada = {
-                id: Date.now(),
-                fecha: new Date().toISOString(),
                 cliente: cliente.nombre || 'Sin nombre',
-                empresa: cliente.empresa || '',
+                empresaCliente: cliente.empresa || '',
                 telefono: cliente.telefono || '',
                 productos: JSON.parse(JSON.stringify(productosEnTabla)),
                 sucursal: sucursalSeleccionada ? { ...sucursalSeleccionada } : null,
                 globalDescPct,
                 total: totalFinal,
                 mostrarConIGV,
-                forzarPorMayor
+                forzarPorMayor,
+                activo: true,
+                usuario: usuarioActual?.username || '',
+                usuarioNombre: usuarioActual?.nombre || ''
             };
 
-            const historial = getHistorialDB();
-            historial.unshift(entrada);
-            if (historial.length > 50) historial.pop();
-            localStorage.setItem('historial_lh', JSON.stringify(historial));
-            renderHistorial();
-            mostrarNotificacion('✅ Cotización guardada en historial', 'success');
+            try {
+                const resp = await fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_COTIZACIONES}`, {
+                    method: 'POST',
+                    headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual?.sessionToken }),
+                    body: JSON.stringify(entrada)
+                });
+                if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err.error || 'HTTP ' + resp.status); }
+                renderHistorial();
+                mostrarNotificacion('✅ Cotización guardada en la nube', 'success');
+            } catch (e) {
+                console.error('Error al guardar en historial:', e);
+                mostrarNotificacion('⚠️ No se pudo guardar en la nube: ' + e.message, 'warning');
+            }
         }
 
-        function renderHistorial() {
-            const historial = getHistorialDB();
-            const countEl = document.getElementById('historialCount');
-            if (countEl) countEl.textContent = historial.length;
+        async function cargarHistorialDesdeNube() {
+            const esMaster = usuarioActual?.nivel === 'master';
+            const where = (esMaster && verTodasLasCotizaciones)
+                ? { activo: true }
+                : { activo: true, usuario: usuarioActual?.username || '' };
+            const url = `${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_COTIZACIONES}?where=${encodeURIComponent(JSON.stringify(where))}&order=-createdAt&limit=200`;
+            const resp = await fetch(url, { headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual?.sessionToken }) });
+            if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err.error || 'HTTP ' + resp.status); }
+            const data = await resp.json();
+            historialCache = data.results || [];
+        }
+
+        let usuarioSeleccionadoHistorial = null; // username filtrado dentro de la vista "Ver todas" (master)
+
+        async function renderHistorial() {
             const listEl = document.getElementById('historialList');
             if (!listEl) return;
 
-            if (historial.length === 0) {
+            const btnMaster = document.getElementById('btnToggleMaster');
+            if (btnMaster) {
+                btnMaster.style.display = usuarioActual?.nivel === 'master' ? 'inline-block' : 'none';
+                btnMaster.textContent = verTodasLasCotizaciones ? '👤 Ver solo mis cotizaciones' : '👥 Ver todas';
+            }
+
+            listEl.innerHTML = `<div class="historial-empty">⏳ Cargando cotizaciones...</div>`;
+
+            try {
+                await cargarHistorialDesdeNube();
+            } catch (e) {
+                console.error('Error al cargar historial:', e);
+                listEl.innerHTML = `<div class="historial-empty">⚠️ No se pudo cargar el historial: ${e.message}</div>`;
+                return;
+            }
+
+            const countEl = document.getElementById('historialCount');
+            if (countEl) countEl.textContent = historialCache.length;
+
+            if (historialCache.length === 0) {
                 listEl.innerHTML = `<div class="historial-empty">No hay cotizaciones guardadas aún.<br><br>Arma una cotización y haz clic en <strong>"💾 Guardar"</strong>.</div>`;
                 return;
             }
 
-            listEl.innerHTML = `<div class="historial-list">${historial.map((entry, i) => {
-                const fecha = new Date(entry.fecha).toLocaleDateString('es-PE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+            const mostrandoTodas = usuarioActual?.nivel === 'master' && verTodasLasCotizaciones;
+
+            // Vista master, nivel 1: lista de usuarios (sin seleccionar ninguno todavía)
+            if (mostrandoTodas && !usuarioSeleccionadoHistorial) {
+                renderUsuariosHistorial(listEl);
+                return;
+            }
+
+            // Vista normal, o vista master nivel 2: cotizaciones de un usuario puntual
+            const lista = mostrandoTodas
+                ? historialCache.filter(e => (e.usuario || '') === usuarioSeleccionadoHistorial)
+                : historialCache;
+
+            renderListaCotizaciones(listEl, lista, mostrandoTodas);
+        }
+
+        // Vista master — agrupa las cotizaciones por usuario y muestra una tarjeta por persona
+        function renderUsuariosHistorial(listEl) {
+            const porUsuario = {};
+            historialCache.forEach(entry => {
+                const key = entry.usuario || '(sin usuario)';
+                if (!porUsuario[key]) {
+                    porUsuario[key] = { usuario: key, nombre: entry.usuarioNombre || key, cantidad: 0, ultimaFecha: entry.createdAt, totalAcumulado: 0 };
+                }
+                porUsuario[key].cantidad++;
+                porUsuario[key].totalAcumulado += entry.total || 0;
+                if (new Date(entry.createdAt) > new Date(porUsuario[key].ultimaFecha)) {
+                    porUsuario[key].ultimaFecha = entry.createdAt;
+                }
+            });
+
+            const usuarios = Object.values(porUsuario).sort((a, b) => new Date(b.ultimaFecha) - new Date(a.ultimaFecha));
+
+            listEl.innerHTML = `
+                <div style="margin-bottom:12px;color:var(--auth-ink-soft, #718096);font-size:0.85em;">👥 Selecciona un usuario para ver sus cotizaciones</div>
+                <div class="historial-list">
+                    ${usuarios.map(u => {
+                        const fecha = new Date(u.ultimaFecha).toLocaleDateString('es-PE', { day:'2-digit', month:'short', year:'numeric' });
+                        return `
+                        <div class="historial-card" style="cursor:pointer;" onclick="verHistorialDeUsuario('${u.usuario}')">
+                            <div class="historial-card-left">
+                                <div class="historial-card-title">🧑‍💼 ${u.nombre}</div>
+                                <div class="historial-card-meta">
+                                    <span>📦 ${u.cantidad} cotización${u.cantidad !== 1 ? 'es' : ''}</span>
+                                    <span>📅 Última: ${fecha}</span>
+                                </div>
+                            </div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                                <div class="historial-card-total">S/ ${u.totalAcumulado.toFixed(2)}</div>
+                                <span style="font-size:0.8em;color:var(--secondary);font-weight:600;">Ver cotizaciones →</span>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function verHistorialDeUsuario(username) {
+            usuarioSeleccionadoHistorial = username;
+            renderHistorial();
+        }
+
+        function volverAUsuariosHistorial() {
+            usuarioSeleccionadoHistorial = null;
+            renderHistorial();
+        }
+
+        // Renderiza una lista plana de tarjetas de cotización (propia, o de un usuario puntual dentro de la vista master)
+        function renderListaCotizaciones(listEl, lista, mostrandoTodas) {
+            const nombreUsuarioActivo = mostrandoTodas && usuarioSeleccionadoHistorial
+                ? (lista[0]?.usuarioNombre || usuarioSeleccionadoHistorial)
+                : null;
+
+            const encabezado = nombreUsuarioActivo
+                ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                        <button class="btn btn-small" onclick="volverAUsuariosHistorial()" style="background:#edf2f7;color:var(--primary);font-size:0.8em;">← Volver a usuarios</button>
+                        <strong style="color:var(--primary);">🧑‍💼 Cotizaciones de ${nombreUsuarioActivo}</strong>
+                   </div>`
+                : '';
+
+            if (lista.length === 0) {
+                listEl.innerHTML = `${encabezado}<div class="historial-empty">Este usuario no tiene cotizaciones visibles.</div>`;
+                return;
+            }
+
+            listEl.innerHTML = `${encabezado}<div class="historial-list">${lista.map((entry) => {
+                const fecha = new Date(entry.createdAt).toLocaleDateString('es-PE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
                 const numProductos = entry.productos.length;
                 const totalUnid = entry.productos.reduce((a, p) => a + p.cantidad, 0);
                 return `
                     <div class="historial-card">
                         <div class="historial-card-left">
-                            <div class="historial-card-title">👤 ${entry.cliente}${entry.empresa ? ' — ' + entry.empresa : ''}</div>
+                            <div class="historial-card-title">👤 ${entry.cliente}${entry.empresaCliente ? ' — ' + entry.empresaCliente : ''}</div>
                             <div class="historial-card-meta">
                                 <span>📅 ${fecha}</span>
                                 <span>📦 ${numProductos} producto${numProductos!==1?'s':''} · ${totalUnid} unid.</span>
@@ -5532,17 +6077,22 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
                             <div class="historial-card-total">S/ ${entry.total.toFixed(2)}</div>
                             <div class="historial-card-actions">
-                                <button class="btn-historial-load" onclick="cargarDesdeHistorial(${i})">📂 Cargar</button>
-                                <button class="btn-historial-del" onclick="eliminarDeHistorial(${i})">🗑️</button>
+                                <button class="btn-historial-load" onclick="cargarDesdeHistorial('${entry.objectId}')">📂 Cargar</button>
+                                <button class="btn-historial-del" onclick="eliminarDeHistorial('${entry.objectId}')">🗑️</button>
                             </div>
                         </div>
                     </div>`;
             }).join('')}</div>`;
         }
 
-        function cargarDesdeHistorial(index) {
-            const historial = getHistorialDB();
-            const entry = historial[index];
+        function toggleVerTodasCotizaciones() {
+            verTodasLasCotizaciones = !verTodasLasCotizaciones;
+            usuarioSeleccionadoHistorial = null; // siempre arranca en la lista de usuarios al alternar
+            renderHistorial();
+        }
+
+        function cargarDesdeHistorial(objectId) {
+            const entry = historialCache.find(e => e.objectId === objectId);
             if (!entry) return;
             if (!confirm(`¿Cargar cotización de "${entry.cliente}"? Se reemplazará la cotización actual.`)) return;
             productosEnTabla = JSON.parse(JSON.stringify(entry.productos)).map(migrarProductoLegacy);
@@ -5550,7 +6100,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             document.getElementById('globalDiscount').value = entry.globalDescPct || '';
             // Cargar datos del cliente
             document.getElementById('clienteNombre').value = entry.cliente === 'Sin nombre' ? '' : entry.cliente;
-            document.getElementById('clienteEmpresa').value = entry.empresa || '';
+            document.getElementById('clienteEmpresa').value = entry.empresaCliente || '';
             document.getElementById('clienteTelefono').value = entry.telefono || '';
             actualizarResumenCliente();
             renderTable();
@@ -5561,18 +6111,88 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             mostrarNotificacion('📂 Cotización cargada', 'success');
         }
 
-        function eliminarDeHistorial(index) {
-            const historial = getHistorialDB();
-            historial.splice(index, 1);
-            localStorage.setItem('historial_lh', JSON.stringify(historial));
-            renderHistorial();
+        // "Eliminar" no borra el registro de la base de datos: solo lo oculta (activo: true -> false)
+        async function eliminarDeHistorial(objectId) {
+            if (!confirm('¿Ocultar esta cotización del historial?')) return;
+            try {
+                const resp = await fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_COTIZACIONES}/${objectId}`, {
+                    method: 'PUT',
+                    headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual?.sessionToken }),
+                    body: JSON.stringify({ activo: false })
+                });
+                if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err.error || 'HTTP ' + resp.status); }
+                renderHistorial();
+                mostrarNotificacion('Cotización ocultada del historial', 'info');
+            } catch (e) {
+                console.error('Error al ocultar cotización:', e);
+                mostrarNotificacion('⚠️ No se pudo ocultar: ' + e.message, 'warning');
+            }
         }
 
-        function limpiarHistorial() {
-            if (!confirm('¿Eliminar todo el historial de cotizaciones?')) return;
-            localStorage.removeItem('historial_lh');
-            renderHistorial();
-            mostrarNotificacion('Historial eliminado', 'info');
+        // Oculta (no borra) todas las cotizaciones visibles en la vista actual
+        async function limpiarHistorial() {
+            if (historialCache.length === 0) { mostrarNotificacion('No hay cotizaciones para ocultar', 'info'); return; }
+            if (!confirm(`¿Ocultar las ${historialCache.length} cotizaciones de esta lista? No se borran, solo dejan de mostrarse.`)) return;
+            try {
+                await Promise.all(historialCache.map(entry =>
+                    fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_COTIZACIONES}/${entry.objectId}`, {
+                        method: 'PUT',
+                        headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual?.sessionToken }),
+                        body: JSON.stringify({ activo: false })
+                    })
+                ));
+                renderHistorial();
+                mostrarNotificacion('Historial ocultado', 'info');
+            } catch (e) {
+                console.error('Error al ocultar historial:', e);
+                mostrarNotificacion('⚠️ No se pudo completar la operación', 'warning');
+            }
+        }
+
+        // Migra cotizaciones que ya existían en este navegador (localStorage, versión anterior sin login)
+        // a la nube, ligadas al usuario que acaba de iniciar sesión. Se ejecuta una sola vez por usuario.
+        async function migrarHistorialLocalSiExiste() {
+            const yaMigrado = localStorage.getItem('historialMigrado_' + usuarioActual.username);
+            if (yaMigrado) return;
+
+            let historialLocal = [];
+            try { historialLocal = JSON.parse(localStorage.getItem('historial_lh') || '[]'); } catch (e) { historialLocal = []; }
+
+            if (historialLocal.length === 0) {
+                localStorage.setItem('historialMigrado_' + usuarioActual.username, '1');
+                return;
+            }
+
+            mostrarNotificacion(`⏳ Migrando ${historialLocal.length} cotización(es) anteriores a la nube...`, 'info');
+            let migradas = 0;
+            for (const entry of historialLocal) {
+                try {
+                    const resp = await fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_COTIZACIONES}`, {
+                        method: 'POST',
+                        headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual.sessionToken }),
+                        body: JSON.stringify({
+                            cliente: entry.cliente || 'Sin nombre',
+                            empresaCliente: entry.empresa || '',
+                            telefono: entry.telefono || '',
+                            productos: entry.productos || [],
+                            sucursal: entry.sucursal || null,
+                            globalDescPct: entry.globalDescPct || 0,
+                            total: entry.total || 0,
+                            mostrarConIGV: !!entry.mostrarConIGV,
+                            forzarPorMayor: !!entry.forzarPorMayor,
+                            activo: true,
+                            usuario: usuarioActual.username,
+                            usuarioNombre: usuarioActual.nombre
+                        })
+                    });
+                    if (resp.ok) migradas++;
+                } catch (e) {
+                    console.error('Error migrando una cotización local:', e);
+                }
+            }
+
+            localStorage.setItem('historialMigrado_' + usuarioActual.username, '1');
+            mostrarNotificacion(`✅ ${migradas} de ${historialLocal.length} cotización(es) migradas a la nube`, 'success');
         }
 
         function switchTabById(tab) {
@@ -5663,7 +6283,13 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
         // ============================================
         // INITIALIZATION
 
-        window.onload = function() {
+        let appYaInicializada = false;
+
+        // Se ejecuta una sola vez, después de que el login (o la sesión guardada) se confirma
+        function inicializarAppPostLogin() {
+            if (appYaInicializada) return;
+            appYaInicializada = true;
+
             cargarEstado();
             cargarPreferencias(); // Cargar preferencias de IGV y Forzar Por Mayor
             renderSucursales();
@@ -5676,9 +6302,14 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             const fichaCatBtn = document.getElementById('fichaCatBtn_' + categoriaFichaActiva);
             if (fichaCatBtn) { document.querySelectorAll('.ficha-cat-btn').forEach(b => b.classList.remove('active')); fichaCatBtn.classList.add('active'); }
             renderPickerFicha();
+            migrarHistorialLocalSiExiste();
             console.log('✅ Cotizador cargado correctamente');
             console.log(`📦 ${productosDB.length} productos disponibles`);
             console.log(`🚚 ${sucursalesDB.length} sucursales disponibles`);
+        }
+
+        window.onload = function() {
+            verificarSesionGuardada(); // Muestra login, o entra directo si la sesión sigue vigente
         };
 
         // Cerrar modales al hacer click fuera

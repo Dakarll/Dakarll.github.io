@@ -3809,11 +3809,10 @@ function mostrarApp() {
             const columnas = Object.keys(filas[0]);
             thead.innerHTML = columnas.map(c => `<th>${c}</th>`).join('');
 
-const filtro = (document.getElementById('kardexSearchInput')?.value || '').toLowerCase().trim();
-const palabras = filtro.split(/\s+/).filter(Boolean);
-const filtradas = palabras.length === 0 ? filas : filas.filter(fila =>
-    palabras.every(palabra => columnas.some(c => String(fila[c]).toLowerCase().includes(palabra)))
-);
+            const filtro = (document.getElementById('kardexSearchInput')?.value || '').toLowerCase().trim();
+            const filtradas = !filtro ? filas : filas.filter(fila =>
+                columnas.some(c => String(fila[c]).toLowerCase().includes(filtro))
+            );
 
             document.getElementById('kardexCount').textContent = filtradas.length;
 
@@ -5542,27 +5541,12 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                     await writable.close();
                     return;
                 } catch (e) {
-                    console.warn('No se pudo escribir en la carpeta fija, se usa el método normal:', e);
+                    console.warn('No se pudo escribir en la carpeta fija, se usa la descarga estándar:', e);
                 }
             }
 
-            if (window.showSaveFilePicker) {
-                try {
-                    const extension = nombreArchivo.split('.').pop();
-                    const handle = await window.showSaveFilePicker({
-                        suggestedName: nombreArchivo,
-                        types: [{ description: 'Archivo', accept: { [tipoMime]: ['.' + extension] } }]
-                    });
-                    const writable = await handle.createWritable();
-                    await writable.write(blob);
-                    await writable.close();
-                    return;
-                } catch (e) {
-                    if (e.name === 'AbortError') return; // el usuario cerró el diálogo sin elegir carpeta
-                    console.warn('No se pudo usar el selector de carpeta, se usa descarga estándar:', e);
-                }
-            }
-            // Respaldo: descarga estándar del navegador (carpeta de Descargas por defecto)
+            // 2) Sin carpeta fija: descarga estándar directa (misma forma que en celulares y navegadores
+            // sin File System Access API; no se abre ningún selector de carpeta por cada descarga)
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
@@ -6512,7 +6496,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
         // ============================================
         // Cambia esto a "false" para ocultar ambos botones (exportar/importar) una vez
         // que ya no se necesiten. No afecta ninguna otra parte de la app.
-        const HABILITAR_RECUPERAR_HISTORIAL_LOCAL = false;
+        const HABILITAR_RECUPERAR_HISTORIAL_LOCAL = true;
 
         function aplicarVisibilidadRecuperarHistorial() {
             const btnExportar = document.getElementById('btnExportarHistorialLocal');

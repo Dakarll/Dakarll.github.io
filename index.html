@@ -431,6 +431,18 @@
             border-color: var(--secondary) !important;
         }
 
+        .ajustes-subtab-btn {
+            border-radius: 8px !important;
+            border: 1.5px solid var(--border) !important;
+            padding: 8px 16px !important;
+        }
+
+        .ajustes-subtab-btn.active {
+            background: var(--secondary) !important;
+            color: white !important;
+            border-color: var(--secondary) !important;
+        }
+
         .ficha-producto-icono {
             font-size: 2.5em;
             text-align: center;
@@ -1460,6 +1472,64 @@
             background: #eef2ff;
         }
 
+        /* Círculos de color (a partir del Kardex) */
+        .color-circulos {
+            display: flex;
+            gap: 7px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .color-circulo {
+            border-radius: 50%;
+            border: 1.5px solid rgba(0,0,0,0.18);
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: transform 0.12s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+
+        .color-circulo:hover, .color-circulo:active {
+            transform: scale(1.18);
+        }
+
+        .color-circulo.agotado {
+            opacity: 0.3;
+        }
+
+        .color-circulo-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px 4px 6px;
+            border-radius: 14px;
+            font-size: 0.78em;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1.5px solid transparent;
+            background: #e2e8f0;
+            color: var(--primary);
+            transition: all 0.15s;
+        }
+
+        .color-circulo-chip:hover {
+            border-color: var(--secondary);
+            background: #eef2ff;
+        }
+
+        .color-circulo-chip .dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(0,0,0,0.18);
+            flex-shrink: 0;
+        }
+
+        .color-circulo-chip.seleccionado {
+            border-color: var(--secondary);
+            background: #dbeafe;
+        }
+
         /* Color tag in table */
         .color-tag {
             display: inline-block;
@@ -2244,7 +2314,7 @@
                 <button type="button" onclick="cerrarSesion()">Salir</button>
             </div>
             <h1>🏨 Cotizador Profesional</h1>
-            <div class="subtitle">Sistema Integrado de Cotización y Envíos a Provincias · v5.4 </div>
+            <div class="subtitle">Sistema Integrado de Cotización y Envíos a Provincias · v5.1 — Historial · Descuentos · Multi-color · Clientes DB</div>
         </div>
 
 
@@ -2256,7 +2326,7 @@
                 <button class="tab" onclick="switchTab('historial')">🕓 Historial</button>
                 <button class="tab" onclick="switchTab('productos')">📦 Productos</button>
                 <button class="tab" onclick="switchTab('kardex')">📊 Kardex</button>
-                <button class="tab" onclick="switchTab('gestionsucursales')">🏢 Gestión Sucursales</button>
+                <button class="tab" onclick="switchTab('ajustes')">⚙️ Ajustes</button>
                 <button class="tab" onclick="switchTab('fichas')">📄 Fichas Técnicas</button>
             </div>
 
@@ -2311,43 +2381,43 @@
                     </div>
                 </div>
 
-                <div class="add-product-section">
-                    <div class="add-product-title">➕ Agregar Producto a la Cotización</div>
-                    <div class="search-container">
-                        <span class="search-icon">🔍</span>
-                        <input 
-                            type="text" 
-                            id="searchInput" 
-                            class="search-input" 
-                            placeholder="Buscar producto por nombre o código..."
-                            autocomplete="off"
-                        >
-                        <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
+                <div class="cliente-panel">
+                    <div class="cliente-panel-header" onclick="toggleAgregarProductoPanel()">
+                        <div class="cliente-panel-title">
+                            ➕ Agregar Producto a la Cotización
+                        </div>
+                        <span class="cliente-panel-toggle" id="agregarProductoToggleIcon">▼</span>
                     </div>
+                    <div class="cliente-panel-body" id="agregarProductoPanelBody">
+                        <div class="search-container">
+                            <span class="search-icon">🔍</span>
+                            <input 
+                                type="text" 
+                                id="searchInput" 
+                                class="search-input" 
+                                placeholder="Buscar producto por nombre, código o color..."
+                                autocomplete="off"
+                            >
+                            <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
+                        </div>
 
-                    <!-- EXTRAS ROW: Color + Cantidad inicial -->
-                    <div class="add-extras-row" id="addExtrasRow">
-                        <div class="extra-field" style="max-width:200px;">
-                            <label>🎨 Color / Variante</label>
-                            <input type="text" id="inputColor" placeholder="Ej: Blanco, Azul..." autocomplete="off">
-                            <div class="color-chips" id="colorChips">
-                                <span class="color-chip" onclick="setColor('Blanco')">Blanco</span>
-                                <span class="color-chip" onclick="setColor('Beige')">Beige</span>
-                                <span class="color-chip" onclick="setColor('Azul')">Azul</span>
-                                <span class="color-chip" onclick="setColor('Gris')">Gris</span>
-                                <span class="color-chip" onclick="setColor('Negro')">Negro</span>
-                                <span class="color-chip" onclick="setColor('Crema')">Crema</span>
-                                <span class="color-chip" onclick="setColor('Verde')">Verde</span>
+                        <!-- EXTRAS ROW: Color + Cantidad inicial -->
+                        <div class="add-extras-row" id="addExtrasRow">
+                            <div class="extra-field" style="max-width:260px;">
+                                <label>🎨 Color / Variante</label>
+                                <input type="text" id="inputColor" placeholder="Ej: Blanco, Azul..." autocomplete="off" oninput="filtrarChipsColorAgregar(this.value)">
+                                <div class="color-chips" id="colorChips"></div>
+                            </div>
+                            <div class="extra-field" style="max-width:110px;">
+                                <label>📦 Cant. inicial</label>
+                                <input type="number" id="inputCantidadInicial" value="1" min="1" style="text-align:center;" oninput="actualizarDisponibleColorSeleccionado(document.getElementById('inputColor').value)">
                             </div>
                         </div>
-                        <div class="extra-field" style="max-width:110px;">
-                            <label>📦 Cant. inicial</label>
-                            <input type="number" id="inputCantidadInicial" value="1" min="1" style="text-align:center;">
-                        </div>
-                    </div>
+                        <div id="disponibleColorLabel" style="font-size:0.8em;margin-top:4px;min-height:1.2em;"></div>
 
-                    <div style="margin-top:10px;">
-                        <button id="btnAdd" class="btn btn-primary" disabled>Agregar a la Cotización</button>
+                        <div style="margin-top:10px;">
+                            <button id="btnAdd" class="btn btn-primary" disabled>Agregar a la Cotización</button>
+                        </div>
                     </div>
                 </div>
 
@@ -2408,35 +2478,19 @@
 
             <!-- TAB: GESTIÓN DE PRODUCTOS -->
             <div class="tab-content" id="tab-productos">
-                <!-- FORMULARIO NUEVO PRODUCTO -->
-                <div class="new-form-section">
-                    <h3>➕ Agregar Nuevo Producto</h3>
-                    <form id="newProductForm" onsubmit="agregarNuevoProducto(event)">
-                        <div class="form-group">
-                            <label class="form-label" style="color: white;">Código del Producto</label>
-                            <input type="text" class="form-input" id="newProductCodigo" placeholder="Ej: TOA-008" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" style="color: white;">Nombre del Producto</label>
-                            <input type="text" class="form-input" id="newProductNombre" placeholder="Ej: Toalla Premium..." required>
-                        </div>
-                        <div class="price-grid">
-                            <div class="form-group">
-                                <label class="form-label" style="color: white;">Precio Por Menor (S/)</label>
-                                <input type="number" step="0.01" min="0" class="form-input" id="newProductMenor" placeholder="0.00" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" style="color: white;">Precio Por Mayor (S/)</label>
-                                <input type="number" step="0.01" min="0" class="form-input" id="newProductMayor" placeholder="0.00" required>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-success" style="width: 100%;">💾 Agregar Producto</button>
-                    </form>
-                </div>
-
-                <!-- LISTA DE PRODUCTOS -->
                 <div class="add-product-section">
-                    <div class="add-product-title">📦 Lista de Productos (<span id="productCount">0</span>)</div>
+                    <div class="add-product-title">📦 Catálogo de Productos (<span id="productCountRapido">0</span>)</div>
+                    <div class="search-container">
+                        <span class="search-icon">🔍</span>
+                        <input 
+                            type="text" 
+                            id="searchProductosRapido" 
+                            class="search-input" 
+                            placeholder="Buscar por nombre, código o color..."
+                            autocomplete="off"
+                            oninput="renderProductosVistaRapida()"
+                        >
+                    </div>
                 </div>
                 <div class="products-table-container">
                     <table class="products-table">
@@ -2444,13 +2498,13 @@
                             <tr>
                                 <th>Código</th>
                                 <th>Producto</th>
-                                <th>Und</th>
-                                <th>1/4 Docena</th>
-                                <th>Mayor</th>
-                                <th>Acciones</th>
+                                <th>Precio Und.</th>
+                                <th>Precio Mayor</th>
+                                <th>Stock total</th>
+                                <th>Colores disponibles</th>
                             </tr>
                         </thead>
-                        <tbody id="productListBody"></tbody>
+                        <tbody id="productListBodyRapido"></tbody>
                     </table>
                 </div>
             </div>
@@ -2463,6 +2517,7 @@
                         <button type="button" id="btnActualizarStock" class="btn btn-success" onclick="cargarKardex(true)">🔄 Actualizar desde Dropbox</button>
                         <div id="kardexUltimaActualizacion" style="color:white;font-size:0.85em;opacity:0.85;"></div>
                     </div>
+                    <div id="kardexColorWarning" style="display:none;background:#fefcbf;color:#744210;padding:8px 12px;border-radius:8px;font-size:0.82em;margin-bottom:10px;"></div>
                     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
                         <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0;">
                             <label class="form-label" style="color:white;">📑 Hoja del Excel</label>
@@ -2490,74 +2545,128 @@
                 </div>
             </div>
 
-            <!-- TAB: GESTIÓN DE SUCURSALES -->
-            <div class="tab-content" id="tab-gestionsucursales">
-                <!-- FORMULARIO NUEVA SUCURSAL -->
-                <div class="new-form-section">
-                    <h3>➕ Agregar Nueva Sucursal</h3>
-                    <form id="newSucursalForm" onsubmit="agregarNuevaSucursal(event)">
-                        <div class="form-group">
-                            <label class="form-label" style="color: white;">Nombre de la Sucursal</label>
-                            <input type="text" class="form-input" id="newSucursalNombre" placeholder="Ej: Lima Centro" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" style="color: white;">Dirección</label>
-                            <input type="text" class="form-input" id="newSucursalDireccion" placeholder="Ej: Av. Principal 123" required>
-                        </div>
-                        <div class="price-grid">
-                            <div class="form-group">
-                                <label class="form-label" style="color: white;">Ciudad</label>
-                                <input type="text" class="form-input" id="newSucursalCiudad" placeholder="Ej: Lima" required>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" style="color: white;">Provincia</label>
-                                <input type="text" class="form-input" id="newSucursalProvincia" placeholder="Ej: Lima" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" style="color: white;">Tipo de Sucursal</label>
-                            <select class="form-input" id="newSucursalTipo" required>
-                                <option value="">Seleccione un tipo...</option>
-                                <option value="Grande / Co">Grande / Co</option>
-                                <option value="Mediana">Mediana</option>
-                                <option value="Pequeña">Pequeña</option>
-                                <option value="Terminal">Terminal</option>
-                                <option value="Micro">Micro</option>
-                                <option value="Mini-micro">Mini-micro</option>
-                                <option value="Micro E/r">Micro E/r</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-success" style="width: 100%;">💾 Agregar Sucursal</button>
-                    </form>
+            <!-- TAB: AJUSTES (Gestión de Sucursales + Editar/Agregar Productos) -->
+            <div class="tab-content" id="tab-ajustes">
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;">
+                    <button type="button" class="tab ajustes-subtab-btn active" id="ajustesSubBtn_productos" onclick="cambiarAjustesSubTab('productos')">📦 Productos</button>
+                    <button type="button" class="tab ajustes-subtab-btn" id="ajustesSubBtn_sucursales" onclick="cambiarAjustesSubTab('sucursales')">🏢 Sucursales</button>
                 </div>
 
-                <!-- LISTA DE SUCURSALES -->
-                <div class="add-product-section">
-                    <div class="add-product-title">🏢 Lista de Sucursales (<span id="sucursalCount">0</span>)</div>
-                    <div class="search-container">
-                        <span class="search-icon">🔍</span>
-                        <input 
-                            type="text" 
-                            id="searchSucursalGestion" 
-                            class="search-input" 
-                            placeholder="Buscar sucursal..."
-                        >
+                <!-- AJUSTES > PRODUCTOS -->
+                <div id="ajustesSub-productos" class="ajustes-subtab-content">
+                    <div class="new-form-section">
+                        <h3>➕ Agregar Nuevo Producto</h3>
+                        <form id="newProductForm" onsubmit="agregarNuevoProducto(event)">
+                            <div class="form-group">
+                                <label class="form-label" style="color: white;">Código del Producto</label>
+                                <input type="text" class="form-input" id="newProductCodigo" placeholder="Ej: TOA-008" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="color: white;">Nombre del Producto</label>
+                                <input type="text" class="form-input" id="newProductNombre" placeholder="Ej: Toalla Premium..." required>
+                            </div>
+                            <div class="price-grid">
+                                <div class="form-group">
+                                    <label class="form-label" style="color: white;">Precio Por Menor (S/)</label>
+                                    <input type="number" step="0.01" min="0" class="form-input" id="newProductMenor" placeholder="0.00" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" style="color: white;">Precio Por Mayor (S/)</label>
+                                    <input type="number" step="0.01" min="0" class="form-input" id="newProductMayor" placeholder="0.00" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success" style="width: 100%;">💾 Agregar Producto</button>
+                        </form>
+                    </div>
+
+                    <div class="add-product-section">
+                        <div class="add-product-title">📦 Lista de Productos (<span id="productCount">0</span>)</div>
+                    </div>
+                    <div class="products-table-container">
+                        <table class="products-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Producto</th>
+                                    <th>Und</th>
+                                    <th>1/4 Docena</th>
+                                    <th>Mayor</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productListBody"></tbody>
+                        </table>
                     </div>
                 </div>
-                <div class="products-table-container">
-                    <table class="products-table">
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Dirección</th>
-                                <th>Ciudad</th>
-                                <th>Provincia</th>
-                                <th>Tipo</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sucursalListBody"></tbody>
-                    </table>
+
+                <!-- AJUSTES > SUCURSALES -->
+                <div id="ajustesSub-sucursales" class="ajustes-subtab-content" style="display:none;">
+                    <div class="new-form-section">
+                        <h3>➕ Agregar Nueva Sucursal</h3>
+                        <form id="newSucursalForm" onsubmit="agregarNuevaSucursal(event)">
+                            <div class="form-group">
+                                <label class="form-label" style="color: white;">Nombre de la Sucursal</label>
+                                <input type="text" class="form-input" id="newSucursalNombre" placeholder="Ej: Lima Centro" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="color: white;">Dirección</label>
+                                <input type="text" class="form-input" id="newSucursalDireccion" placeholder="Ej: Av. Principal 123" required>
+                            </div>
+                            <div class="price-grid">
+                                <div class="form-group">
+                                    <label class="form-label" style="color: white;">Ciudad</label>
+                                    <input type="text" class="form-input" id="newSucursalCiudad" placeholder="Ej: Lima" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" style="color: white;">Provincia</label>
+                                    <input type="text" class="form-input" id="newSucursalProvincia" placeholder="Ej: Lima" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" style="color: white;">Tipo de Sucursal</label>
+                                <select class="form-input" id="newSucursalTipo" required>
+                                    <option value="">Seleccione un tipo...</option>
+                                    <option value="Grande / Co">Grande / Co</option>
+                                    <option value="Mediana">Mediana</option>
+                                    <option value="Pequeña">Pequeña</option>
+                                    <option value="Terminal">Terminal</option>
+                                    <option value="Micro">Micro</option>
+                                    <option value="Mini-micro">Mini-micro</option>
+                                    <option value="Micro E/r">Micro E/r</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-success" style="width: 100%;">💾 Agregar Sucursal</button>
+                        </form>
+                    </div>
+
+                    <!-- LISTA DE SUCURSALES -->
+                    <div class="add-product-section">
+                        <div class="add-product-title">🏢 Lista de Sucursales (<span id="sucursalCount">0</span>)</div>
+                        <div class="search-container">
+                            <span class="search-icon">🔍</span>
+                            <input 
+                                type="text" 
+                                id="searchSucursalGestion" 
+                                class="search-input" 
+                                placeholder="Buscar sucursal..."
+                            >
+                        </div>
+                    </div>
+                    <div class="products-table-container">
+                        <table class="products-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Dirección</th>
+                                    <th>Ciudad</th>
+                                    <th>Provincia</th>
+                                    <th>Tipo</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sucursalListBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -2825,6 +2934,63 @@
 <!-- JAVASCRIPT PARA FICHAS TÉCNICAS - AGREGAR ANTES DEL </script> FINAL -->
 <script>
 // ============================================
+// AVISO DE ACTUALIZACIÓN DISPONIBLE
+// ============================================
+// Sube este número cada vez que publiques un cambio en GitHub Pages.
+// Puede ser lo que quieras mientras cambie (fecha, contador, etc.) — solo se compara como texto.
+const VERSION_APP = '2026-07-17.1';
+
+// Opción B (recarga forzada): apagada por defecto. Solo cámbiala a "true" el día que subas
+// una corrección urgente y necesites que TODOS actualicen sí o sí — y vuelve a apagarla después.
+const FORZAR_ACTUALIZACION = false;
+
+let intervaloRevisionVersion = null;
+
+// Revisa si la versión publicada en el servidor es distinta a la que tiene cargada este navegador
+async function revisarNuevaVersion() {
+    try {
+        const resp = await fetch(window.location.pathname + '?_v=' + Date.now(), { cache: 'no-store' });
+        if (!resp.ok) return;
+        const html = await resp.text();
+        const match = html.match(/const VERSION_APP = '([^']+)'/);
+        if (!match) return;
+        const versionServidor = match[1];
+        if (versionServidor !== VERSION_APP) mostrarAvisoActualizacion();
+    } catch (e) {
+        console.warn('No se pudo revisar si hay una versión nueva:', e);
+    }
+}
+
+// Opción A: aviso pequeño y no intrusivo, la persona decide cuándo recargar
+function mostrarAvisoActualizacion() {
+    if (document.getElementById('avisoActualizacion')) return; // ya se está mostrando
+    const div = document.createElement('div');
+    div.id = 'avisoActualizacion';
+    div.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:99999;background:#2d3748;color:white;padding:14px 18px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.3);font-family:Inter,sans-serif;font-size:0.9em;max-width:300px;';
+    div.innerHTML = `
+        <div style="margin-bottom:10px;">🔄 Hay una actualización disponible</div>
+        <button onclick="location.reload()" style="background:#48bb78;color:white;border:none;border-radius:6px;padding:7px 14px;font-weight:700;cursor:pointer;margin-right:6px;">Actualizar ahora</button>
+        <button onclick="document.getElementById('avisoActualizacion').remove()" style="background:rgba(255,255,255,0.15);color:white;border:none;border-radius:6px;padding:7px 14px;cursor:pointer;">Después</button>
+    `;
+    document.body.appendChild(div);
+
+    // Opción B: si está activada, fuerza la recarga automática a los pocos segundos (solo emergencias)
+    if (FORZAR_ACTUALIZACION) {
+        setTimeout(() => location.reload(), 5000);
+    }
+}
+
+// Revisa al entrar, cada 10 minutos, y cada vez que la persona vuelve a la pestaña
+function iniciarRevisionDeVersion() {
+    revisarNuevaVersion();
+    if (intervaloRevisionVersion) clearInterval(intervaloRevisionVersion);
+    intervaloRevisionVersion = setInterval(revisarNuevaVersion, 10 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') revisarNuevaVersion();
+    });
+}
+
+// ============================================
 // FICHA TÉCNICA — Productos consultados desde Back4App
 // ============================================
 // Si el picker no carga imágenes, ve a:
@@ -2928,8 +3094,38 @@ function renderPreviewFicha() {
         <div style="font-weight:700;color:#2d3748;margin-bottom:14px;text-align:center;">${fichaNombreSeleccionado}</div>
         <button type="button" class="btn btn-success" style="width:100%;margin-bottom:8px;" onclick="copiarImagenSeleccionada()">📋 Copiar Imagen</button>
         <button type="button" class="btn" style="width:100%;background:#edf2f7;color:#2d3748;margin-bottom:8px;" onclick="descargarImagenSeleccionada()">⬇️ Descargar</button>
+        <button type="button" class="btn" style="width:100%;background:#2d3748;color:white;margin-bottom:8px;" onclick="abrirModoPresentacion()">🔍 Modo Presentación</button>
         <button type="button" class="btn" style="width:100%;background:white;color:#4299e1;border:1.5px solid #4299e1;" onclick="abrirFichaTecnicaDesdeImagen()">📝 Crear Ficha Técnica</button>
     `;
+}
+
+// Muestra la imagen a pantalla completa, ajustada automáticamente al tamaño de la
+// pantalla (monitor o celular). Se cierra tocando afuera, la X, o la tecla Escape.
+function abrirModoPresentacion() {
+    if (!fichaImagenSeleccionada) return;
+    if (document.getElementById('modoPresentacionOverlay')) return; // ya está abierto
+
+    const overlay = document.createElement('div');
+    overlay.id = 'modoPresentacionOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(15,20,28,0.96);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:16px;cursor:zoom-out;';
+    overlay.innerHTML = `
+        <button type="button" onclick="cerrarModoPresentacion()" title="Cerrar" style="position:absolute;top:14px;right:16px;background:rgba(255,255,255,0.12);color:white;border:none;width:40px;height:40px;border-radius:50%;font-size:1.3em;cursor:pointer;">✕</button>
+        <img src="${fichaImagenSeleccionada}" alt="${fichaNombreSeleccionado}" style="max-width:96vw;max-height:88vh;width:auto;height:auto;object-fit:contain;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,0.5);cursor:default;" onclick="event.stopPropagation()">
+        <div style="color:white;margin-top:16px;font-weight:600;font-size:1.05em;text-align:center;padding:0 20px;">${fichaNombreSeleccionado}</div>
+    `;
+    overlay.onclick = cerrarModoPresentacion;
+    document.addEventListener('keydown', cerrarModoPresentacionConEsc);
+    document.body.appendChild(overlay);
+}
+
+function cerrarModoPresentacion() {
+    const overlay = document.getElementById('modoPresentacionOverlay');
+    if (overlay) overlay.remove();
+    document.removeEventListener('keydown', cerrarModoPresentacionConEsc);
+}
+
+function cerrarModoPresentacionConEsc(e) {
+    if (e.key === 'Escape') cerrarModoPresentacion();
 }
 
 // Copia la imagen seleccionada al portapapeles (funciona además con clic derecho > Copiar imagen sobre la foto)
@@ -3378,6 +3574,7 @@ function mostrarApp() {
                     <select id="tipoDocumento" style="background:rgba(255,255,255,0.15);color:white;border:1.5px solid rgba(255,255,255,0.35);border-radius:6px;padding:3px 7px;font-size:0.85em;font-weight:700;cursor:pointer;">
                         <option value="cotizacion">Cotización</option>
                         <option value="ORDEN DE COMPRA">ORDEN DE COMPRA</option>
+                        <option value="DESPACHO">DESPACHO (sin precios)</option>
                     </select>
                     <span style="margin-left:10px;">🏢</span>
                     <select id="empresaActivaSelect" onchange="cambiarEmpresaActiva()" style="background:rgba(255,255,255,0.15);color:white;border:1.5px solid rgba(255,255,255,0.35);border-radius:6px;padding:3px 7px;font-size:0.85em;font-weight:700;cursor:pointer;">
@@ -3450,15 +3647,15 @@ function mostrarApp() {
                     <th style="width:80px;">Código</th>
                     <th>Producto</th>
                     <th style="width:60px;text-align:center;">Cant.</th>
-                    <th style="width:130px;text-align:right;">Precio Unit.</th>
-                    <th style="width:100px;text-align:right;">Total</th>
+                    <th id="thPrecioUnitCol" style="width:130px;text-align:right;">Precio Unit.</th>
+                    <th id="thTotalCol" style="width:100px;text-align:right;">Total</th>
                 </tr>
             </thead>
             <tbody id="printTableBody"></tbody>
         </table>
 
         <!-- TOTALES + PAGO + BANCO EN FILA -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+        <div id="printTotalesBancoGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
 
             <!-- BANCO -->
             <div style="background:#2d3748;color:white;padding:14px 16px;border-radius:8px;">
@@ -3669,15 +3866,369 @@ function mostrarApp() {
         // ============================================
         const KARDEX_CONFIG = {
             url: 'https://dl.dropboxusercontent.com/scl/fi/ypaoi32fdiu0l91l9wa8w/Kardex-Taller-2026.xlsx?rlkey=y0ywsqsa8acvlvfqniestyjd7&st=y3dxscyp&dl=1',
-            hoja: 0,              // hoja usada para vincular el STOCK con productosDB (índice o nombre)
+            // 'ULTIMA' = siempre usa la última hoja del Excel (la más reciente, ya que cada mes
+            // agregan una hoja nueva). También puedes poner un número fijo (0, 1, 2...) o el
+            // nombre exacto de una hoja puntual si alguna vez necesitas fijarla manualmente.
+            hoja: 'Jul´26',
             columnaCodigo: null,  // null = detección automática, o escribe el nombre exacto ej: 'ARTICULO'
-            columnaStock: null    // null = detección automática, o escribe el nombre exacto ej: 'SALDO'
+            columnaStock: null,   // null = detección automática, o escribe el nombre exacto ej: 'SALDO'
+            // Columna donde vive el color/variante de cada fila. A diferencia de código/stock, esta
+            // NO se detecta sola (el nombre es muy particular) — si el Excel cambia de nombre esta
+            // columna en el futuro, actualiza el texto exacto aquí abajo:
+            columnaColor: 'DESCRIPCION: INV 01/6'
         };
+
+        // Resuelve el nombre real de la hoja a usar, soportando 'ULTIMA' (dinámico), un índice fijo,
+        // o un nombre de hoja puntual — a partir de una lista de nombres de hoja ya conocida.
+        function resolverNombreHojaKardex(listaNombresHojas) {
+            if (KARDEX_CONFIG.hoja === 'ULTIMA') return listaNombresHojas[listaNombresHojas.length - 1];
+            if (typeof KARDEX_CONFIG.hoja === 'number') return listaNombresHojas[KARDEX_CONFIG.hoja];
+            return KARDEX_CONFIG.hoja;
+        }
+
+        let coloresPorProducto = {};   // { "7015": [ {color:"Verde Laurel", saldo:12}, ... ], ... } — construido desde el Kardex
+        let kardexColorDiagnostico = null; // { encontrada, hoja, columnasDisponibles } — para mostrar el aviso si no calza
+
+        // ============================================
+        // COLOR (texto del Kardex) → TONO VISUAL PARA LOS CÍRCULOS
+        // ============================================
+        // Excepciones manuales: si algún nombre de color del Kardex no se ve bien con el
+        // diccionario automático de abajo, agrégalo aquí tal cual está escrito en el Excel.
+        // Ejemplo: 'Verde Laurel': '#4a5f3a',
+        const EXCEPCIONES_COLOR = {
+            // 'Nombre exacto del Kardex': '#hexadecimal',
+        };
+
+        // Diccionario de palabras clave en español → tono base. Se busca cada palabra dentro
+        // del nombre del color (sin importar mayúsculas/acentos) y se usa la primera que calce.
+        const DICCIONARIO_COLORES = [
+            { palabra: 'blanco', hex: '#f7fafc' },
+            { palabra: 'crema', hex: '#f5e6ca' },
+            { palabra: 'beige', hex: '#e8d5b7' },
+            { palabra: 'hueso', hex: '#f0e6d2' },
+            { palabra: 'negro', hex: '#1a1a1a' },
+            { palabra: 'gris', hex: '#9ca3af' },
+            { palabra: 'plata', hex: '#c0c0c0' },
+            { palabra: 'plateado', hex: '#c0c0c0' },
+            { palabra: 'azul', hex: '#3b82f6' },
+            { palabra: 'celeste', hex: '#7dd3fc' },
+            { palabra: 'turquesa', hex: '#2dd4bf' },
+            { palabra: 'verde', hex: '#22c55e' },
+            { palabra: 'oliva', hex: '#6b7f39' },
+            { palabra: 'rojo', hex: '#ef4444' },
+            { palabra: 'vino', hex: '#7f1d1d' },
+            { palabra: 'guinda', hex: '#7f1d1d' },
+            { palabra: 'rosado', hex: '#f472b6' },
+            { palabra: 'rosa', hex: '#f472b6' },
+            { palabra: 'fucsia', hex: '#d946ef' },
+            { palabra: 'morado', hex: '#a855f7' },
+            { palabra: 'lila', hex: '#c4b5fd' },
+            { palabra: 'violeta', hex: '#8b5cf6' },
+            { palabra: 'amarillo', hex: '#eab308' },
+            { palabra: 'mostaza', hex: '#ca8a04' },
+            { palabra: 'dorado', hex: '#d4af37' },
+            { palabra: 'oro', hex: '#d4af37' },
+            { palabra: 'naranja', hex: '#f97316' },
+            { palabra: 'coral', hex: '#fb7185' },
+            { palabra: 'marron', hex: '#78350f' },
+            { palabra: 'marrón', hex: '#78350f' },
+            { palabra: 'cafe', hex: '#6f4e37' },
+            { palabra: 'café', hex: '#6f4e37' },
+            { palabra: 'chocolate', hex: '#4a2c14' },
+            { palabra: 'salmon', hex: '#fca5a5' },
+            { palabra: 'salmón', hex: '#fca5a5' }
+        ];
+
+        // Convierte un color hex (#rrggbb) a más claro u oscuro según "claro"/"oscuro" en el nombre
+        function ajustarIntensidad(hex, factor) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            let r = (num >> 16) & 0xff, g = (num >> 8) & 0xff, b = num & 0xff;
+            r = Math.min(255, Math.max(0, Math.round(r + (factor > 0 ? (255 - r) * factor : r * factor))));
+            g = Math.min(255, Math.max(0, Math.round(g + (factor > 0 ? (255 - g) * factor : g * factor))));
+            b = Math.min(255, Math.max(0, Math.round(b + (factor > 0 ? (255 - b) * factor : b * factor))));
+            return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Devuelve el tono visual (hex) que representa un nombre de color del Kardex
+        function obtenerColorHex(nombreColor) {
+            if (!nombreColor) return '#e2e8f0';
+            if (EXCEPCIONES_COLOR[nombreColor]) return EXCEPCIONES_COLOR[nombreColor];
+
+            const texto = nombreColor
+                .toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // quita acentos para comparar
+
+            const encontrado = DICCIONARIO_COLORES.find(c => texto.includes(c.palabra.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
+            if (!encontrado) return '#a0aec0'; // color genérico si no se reconoce ninguna palabra clave
+
+            let hex = encontrado.hex;
+            if (/\bclaro\b/.test(texto)) hex = ajustarIntensidad(hex, 0.35);
+            if (/\boscuro\b/.test(texto)) hex = ajustarIntensidad(hex, -0.3);
+            return hex;
+        }
+
+        // Círculos de color de SOLO LECTURA (para la lista rápida de Productos). En desktop se ve
+        // el nombre al pasar el mouse (title nativo); en celular, al tocar aparece el mismo aviso
+        // que ya usa el resto de la app, así funciona igual en ambos casos.
+        function generarCirculosColor(codigo, tamano) {
+            const colores = coloresPorProducto[codigo];
+            if (!colores || colores.length === 0) return '<span style="color:#cbd5e0;font-size:0.8em;">—</span>';
+            const px = tamano || 20;
+            return `<div class="color-circulos">${colores.map(c => {
+                const hex = obtenerColorHex(c.color);
+                const agotado = c.saldo <= 0;
+                const texto = `${c.color} — ${c.saldo} disponible${c.saldo === 1 ? '' : 's'}`;
+                const textoEscapado = texto.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                return `<span class="color-circulo${agotado ? ' agotado' : ''}" style="width:${px}px;height:${px}px;background:${hex};" title="${textoEscapado}" onclick="mostrarNotificacion('🎨 ${textoEscapado}', 'info')"></span>`;
+            }).join('')}</div>`;
+        }
+
+        // Chips de color CLICKEABLES para el flujo de "Agregar Producto": al tocar uno, fija el
+        // color elegido en el campo de texto y muestra cuánto stock real hay de ese color.
+        function renderChipsColorAgregar(codigo, filtro = '') {
+            const cont = document.getElementById('colorChips');
+            if (!cont) return;
+            const colores = coloresPorProducto[codigo];
+
+            if (!colores || colores.length === 0) {
+                // Sin colores registrados en el Kardex para este producto: se deja el campo libre
+                cont.innerHTML = '<span style="font-size:0.78em;color:#a0aec0;">Sin colores registrados en el Kardex — escribe uno manualmente</span>';
+                actualizarDisponibleColorSeleccionado(null);
+                return;
+            }
+
+            // Filtro inteligente: a medida que escribes, solo se muestran los colores que calcen
+            // (sin importar mayúsculas/acentos), igual que el buscador de productos.
+            const filtroNorm = normalizarTexto(filtro.trim());
+            const coloresFiltrados = filtroNorm ? colores.filter(c => normalizarTexto(c.color).includes(filtroNorm)) : colores;
+
+            if (coloresFiltrados.length === 0) {
+                cont.innerHTML = `<span style="font-size:0.78em;color:#a0aec0;">Sin colores que calcen con "${filtro}"</span>`;
+                return;
+            }
+
+            cont.innerHTML = coloresFiltrados.map(c => {
+                const hex = obtenerColorHex(c.color);
+                const escapado = c.color.replace(/'/g, "\\'");
+                return `<span class="color-circulo-chip" onclick="setColor('${escapado}')" data-color="${c.color.replace(/"/g, '&quot;')}">
+                    <span class="dot" style="background:${hex};"></span>${c.color} (${c.saldo})
+                </span>`;
+            }).join('');
+        }
+
+        // Filtra los chips de color mientras escribes, y de paso actualiza el aviso de disponibilidad
+        function filtrarChipsColorAgregar(texto) {
+            if (productoSeleccionado) renderChipsColorAgregar(productoSeleccionado.codigo, texto);
+            actualizarDisponibleColorSeleccionado(texto);
+        }
+
+        // Muestra "Disponible: X unidades" bajo el campo de cantidad, según el color elegido,
+        // y avisa (sin bloquear) si la cantidad escrita supera lo que hay en el Kardex.
+        function actualizarDisponibleColorSeleccionado(nombreColor) {
+            const etiqueta = document.getElementById('disponibleColorLabel');
+            if (!etiqueta) return;
+
+            if (!productoSeleccionado || !nombreColor) {
+                etiqueta.textContent = '';
+                return;
+            }
+            const colores = coloresPorProducto[productoSeleccionado.codigo];
+            const info = colores?.find(c => c.color.toLowerCase() === nombreColor.toLowerCase());
+            if (!info) {
+                etiqueta.textContent = '';
+                return;
+            }
+
+            const cantidadPedida = parseInt(document.getElementById('inputCantidadInicial')?.value) || 0;
+            const excede = cantidadPedida > info.saldo;
+            etiqueta.innerHTML = excede
+                ? `⚠️ Solo hay <strong>${info.saldo}</strong> disponibles de este color (estás cotizando ${cantidadPedida})`
+                : `✅ Disponible: <strong>${info.saldo}</strong> unidades`;
+            etiqueta.style.color = excede ? '#c05621' : '#2f855a';
+        }
+
 
         let stockKardex = {};          // { "7015": 24, ... } — para los badges de stock en Productos
         let kardexHojasData = {};      // { "Hoja1": [ {col:val,...}, ... ], "Hoja2": [...] } — TODAS las hojas, TODAS las columnas
         let kardexNombresHojas = [];   // orden de las hojas tal como están en el Excel
         let kardexUltimaActualizacion = null;
+
+        // ██████████████████████████████████████████████████████████████████████████
+        // ██  DROPBOX — Descuento automático de stock en el Kardex por Orden de Compra  ██
+        // ██████████████████████████████████████████████████████████████████████████
+        // PASOS PARA CONECTARLO (una sola vez, lo haces tú en tu cuenta de Dropbox):
+        //
+        // 1. Ve a https://www.dropbox.com/developers/apps → "Create app" → elige
+        //    "Scoped access" y "Full Dropbox" (o "App folder" si prefieres limitarlo).
+        // 2. En la pestaña "Permissions" de esa app, activa: files.content.write,
+        //    files.content.read y sharing.read (esta última solo es necesaria si vas a usar
+        //    "enlaceCompartido" en vez de escribir la ruta exacta a mano). Guarda los cambios
+        //    (botón "Submit" abajo de esa pestaña).
+        // 3. En la pestaña "Settings" copia el "App key" y el "App secret" y pégalos en
+        //    DROPBOX_CONFIG más abajo.
+        // 4. Para obtener el REFRESH TOKEN (una sola vez, no caduca):
+        //    a) Pega esta URL en el navegador, reemplazando TU_APP_KEY por el App key real:
+        //       https://www.dropbox.com/oauth2/authorize?client_id=TU_APP_KEY&response_type=code&token_access_type=offline
+        //    b) Inicia sesión con la cuenta de Dropbox donde vive el Kardex y autoriza la app.
+        //       Te va a mostrar un CÓDIGO en pantalla, cópialo.
+        //    c) Ejecuta este comando (reemplaza CODIGO, APP_KEY, APP_SECRET) desde una
+        //       terminal, o pégalo en una web como https://reqbin.com (método POST):
+        //       curl https://api.dropboxapi.com/oauth2/token -d code=CODIGO -d grant_type=authorization_code -d client_id=APP_KEY -d client_secret=APP_SECRET
+        //    d) La respuesta trae un campo "refresh_token": cópialo y pégalo en DROPBOX_CONFIG.
+        // 5. En "rutaArchivo" escribe la ruta exacta del Excel dentro de tu Dropbox (con "/" al
+        //    inicio). La ves haciendo clic derecho sobre el archivo en dropbox.com → "Copiar ruta".
+        //    Si no la tienes a mano, deja "rutaArchivo" vacío ('') y pon en "enlaceCompartido" el
+        //    link de compartir (el que empieza con https://www.dropbox.com/scl/...): el código la
+        //    resuelve solo la primera vez que se necesita (requiere el permiso sharing.read).
+        //
+        // Sobre el riesgo de que dos Órdenes de Compra se generen al mismo segundo: el código
+        // de abajo usa el sistema de "candado" de Dropbox (el parámetro `rev`) para detectar si
+        // alguien más escribió el archivo mientras tanto, y en ese caso vuelve a intentar con los
+        // datos más recientes en vez de pisar el descuento de la otra persona (hasta 5 intentos).
+        const DROPBOX_CONFIG = {
+            appKey: 'qfh4gbwe1bzmx8n',
+            appSecret: '8fo4y50faonp5wq',
+            refreshToken: 'qg6ZvE4r5mkAAAAAAAAAAR_Co-hqZhhpFj8SkIa2-upya--AJ4NfjC_yC9Svnkwy',
+            // No conocemos la ruta exacta dentro del Dropbox, pero sí el link para compartir.
+            // rutaArchivo se deja vacío y se resuelve solo (una vez) a partir de enlaceCompartido.
+            rutaArchivo: '',
+            enlaceCompartido: 'https://www.dropbox.com/scl/fi/ypaoi32fdiu0l91l9wa8w/Kardex-Taller-2026.xlsx?rlkey=y0ywsqsa8acvlvfqniestyjd7&dl=0'
+        };
+
+        let dropboxAccessTokenCache = null; // { token, expiraEn } — se reutiliza mientras no venza
+        let dropboxRutaResuelta = null;     // path_lower resuelto a partir del enlace compartido (se cachea)
+
+        async function obtenerAccessTokenDropbox() {
+            if (dropboxAccessTokenCache && Date.now() < dropboxAccessTokenCache.expiraEn) {
+                return dropboxAccessTokenCache.token;
+            }
+            const resp = await fetch('https://api.dropboxapi.com/oauth2/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    grant_type: 'refresh_token',
+                    refresh_token: DROPBOX_CONFIG.refreshToken,
+                    client_id: DROPBOX_CONFIG.appKey,
+                    client_secret: DROPBOX_CONFIG.appSecret
+                })
+            });
+            if (!resp.ok) throw new Error('No se pudo autenticar con Dropbox (revisa DROPBOX_CONFIG)');
+            const data = await resp.json();
+            dropboxAccessTokenCache = { token: data.access_token, expiraEn: Date.now() + (data.expires_in - 60) * 1000 };
+            return dropboxAccessTokenCache.token;
+        }
+
+        // Cuando no se conoce la ruta exacta del archivo dentro del Dropbox, la resolvemos una
+        // sola vez a partir del link de compartición (DROPBOX_CONFIG.enlaceCompartido) usando la
+        // API de Dropbox, y la dejamos en caché en memoria para no repetir la consulta.
+        async function obtenerRutaArchivoKardex(accessToken) {
+            if (DROPBOX_CONFIG.rutaArchivo) return DROPBOX_CONFIG.rutaArchivo;
+            if (dropboxRutaResuelta) return dropboxRutaResuelta;
+            if (!DROPBOX_CONFIG.enlaceCompartido) {
+                throw new Error('Falta configurar rutaArchivo o enlaceCompartido en DROPBOX_CONFIG');
+            }
+            const resp = await fetch('https://api.dropboxapi.com/2/sharing/get_shared_link_metadata', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ url: DROPBOX_CONFIG.enlaceCompartido })
+            });
+            if (!resp.ok) {
+                const errTxt = await resp.text().catch(() => '');
+                throw new Error('No se pudo resolver la ruta del Kardex desde el enlace compartido (HTTP ' + resp.status + '). ' + errTxt);
+            }
+            const meta = await resp.json();
+            if (!meta.path_lower) {
+                throw new Error('El enlace compartido no devolvió una ruta de archivo (¿es un link de carpeta?)');
+            }
+            dropboxRutaResuelta = meta.path_lower;
+            return dropboxRutaResuelta;
+        }
+
+        // Descarga el Excel del Kardex directo desde Dropbox (con permisos de escritura) y
+        // devuelve el workbook ya parseado junto con el "rev" (versión) que tenía en ese momento.
+        async function descargarKardexParaEscritura(accessToken) {
+            const ruta = await obtenerRutaArchivoKardex(accessToken);
+            const resp = await fetch('https://content.dropboxapi.com/2/files/download', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Dropbox-API-Arg': JSON.stringify({ path: ruta })
+                }
+            });
+            if (!resp.ok) throw new Error('No se pudo descargar el Kardex desde Dropbox (HTTP ' + resp.status + ')');
+            const metaHeader = resp.headers.get('dropbox-api-result');
+            const meta = metaHeader ? JSON.parse(metaHeader) : {};
+            const buffer = await resp.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: 'array' });
+            return { workbook, rev: meta.rev };
+        }
+
+        // Sube el Excel modificado a Dropbox, pero SOLO si nadie más lo modificó mientras tanto
+        // (usa el "rev" de la descarga como candado). Si alguien más escribió primero, Dropbox
+        // rechaza la subida (409) y hay que reintentar con datos frescos.
+        async function subirKardexConCandado(accessToken, workbook, revEsperada) {
+            const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            const ruta = await obtenerRutaArchivoKardex(accessToken);
+            const resp = await fetch('https://content.dropboxapi.com/2/files/upload', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Dropbox-API-Arg': JSON.stringify({
+                        path: ruta,
+                        mode: { '.tag': 'update', update: revEsperada },
+                        mute: true
+                    }),
+                    'Content-Type': 'application/octet-stream'
+                },
+                body: wbout
+            });
+            if (resp.status === 409) return false; // alguien más escribió primero: hay que reintentar
+            if (!resp.ok) throw new Error('No se pudo subir el Kardex a Dropbox (HTTP ' + resp.status + ')');
+            return true;
+        }
+
+        // Descuenta del Kardex las cantidades de una Orden de Compra. Reintenta hasta 5 veces si
+        // detecta que alguien más modificó el archivo justo en el mismo momento (evita pisar cambios).
+        async function descontarStockKardexDropbox(items) {
+            if (!items.length) return;
+            const accessToken = await obtenerAccessTokenDropbox();
+
+            for (let intento = 1; intento <= 5; intento++) {
+                const { workbook, rev } = await descargarKardexParaEscritura(accessToken);
+                const nombreHoja = resolverNombreHojaKardex(workbook.SheetNames);
+                const hoja = workbook.Sheets[nombreHoja];
+                if (!hoja) throw new Error('No se encontró la hoja del Kardex configurada en KARDEX_CONFIG');
+
+                const filas = XLSX.utils.sheet_to_json(hoja, { defval: '' });
+                const columnas = filas.length ? Object.keys(filas[0]) : [];
+                const colCodigo = KARDEX_CONFIG.columnaCodigo || columnas.find(c => /c[oó]digo|articulo|sku/i.test(c));
+                const colStock = KARDEX_CONFIG.columnaStock || columnas.find(c => /stock|saldo|cantidad|existenc/i.test(c));
+                if (!colCodigo || !colStock) throw new Error('No se detectaron las columnas de código/stock del Kardex');
+
+                let huboCambios = false;
+                items.forEach(item => {
+                    const fila = filas.find(f => String(f[colCodigo]).trim() === String(item.codigo).trim());
+                    if (fila) {
+                        const stockActual = parseFloat(fila[colStock]) || 0;
+                        fila[colStock] = Math.max(0, stockActual - item.cantidad);
+                        huboCambios = true;
+                    }
+                });
+
+                if (!huboCambios) return; // ningún producto de la orden existe en el Kardex, nada que tocar
+
+                const nuevaHoja = XLSX.utils.json_to_sheet(filas, { header: columnas });
+                workbook.Sheets[nombreHoja] = nuevaHoja;
+
+                const exito = await subirKardexConCandado(accessToken, workbook, rev);
+                if (exito) return; // listo
+                // si no tuvo éxito, se repite el ciclo: se vuelve a descargar la versión más reciente
+            }
+            throw new Error('No se pudo actualizar el Kardex después de varios intentos (mucha actividad simultánea)');
+        }
 
         async function cargarKardex(mostrarAviso = true) {
             const btn = document.getElementById('btnActualizarStock');
@@ -3708,9 +4259,11 @@ function mostrarApp() {
                 }));
 
                 renderProductList();
+                renderProductosVistaRapida();
                 poblarSelectorHojas();
                 renderKardexTabCompleta();
                 actualizarEtiquetaStockHeader();
+                actualizarAvisoColorKardex();
                 if (mostrarAviso) mostrarNotificacion(`✅ Kardex actualizado (${kardexNombresHojas.length} hojas)`, 'success');
             } catch (e) {
                 console.error('Error al cargar Kardex:', e);
@@ -3722,22 +4275,62 @@ function mostrarApp() {
 
         // Arma stockKardex (código -> cantidad) a partir de la hoja/columnas configuradas en KARDEX_CONFIG
         function construirStockDesdeHojas() {
-            const nombreHoja = typeof KARDEX_CONFIG.hoja === 'number' ? kardexNombresHojas[KARDEX_CONFIG.hoja] : KARDEX_CONFIG.hoja;
+            const nombreHoja = resolverNombreHojaKardex(kardexNombresHojas);
             const filas = kardexHojasData[nombreHoja];
-            if (!filas || filas.length === 0) { stockKardex = {}; return; }
+            if (!filas || filas.length === 0) { stockKardex = {}; coloresPorProducto = {}; return; }
 
             const encabezados = Object.keys(filas[0]);
             const colCodigo = KARDEX_CONFIG.columnaCodigo || encabezados.find(h => /c[oó]digo|sku|item|art[ií]culo/i.test(h));
             const colStock = KARDEX_CONFIG.columnaStock || encabezados.find(h => /stock|saldo|cantidad|existenc/i.test(h));
-            if (!colCodigo || !colStock) { stockKardex = {}; return; }
 
+            // Coincidencia tolerante (sin importar mayúsculas, acentos ni espacios de más) para no
+            // fallar en silencio por una diferencia mínima de formato entre el Excel y la config.
+            const colColorNormalizado = normalizarTexto(KARDEX_CONFIG.columnaColor || '').replace(/\s+/g, ' ').trim();
+            const colColor = colColorNormalizado
+                ? encabezados.find(h => normalizarTexto(h).replace(/\s+/g, ' ').trim() === colColorNormalizado)
+                : null;
+
+            if (KARDEX_CONFIG.columnaColor && !colColor) {
+                console.warn(
+                    `⚠️ No se encontró la columna de color "${KARDEX_CONFIG.columnaColor}" en la hoja "${nombreHoja}".\n` +
+                    `Columnas encontradas en esa hoja: ${encabezados.join(' | ')}\n` +
+                    `Revisa: (1) que el nombre en KARDEX_CONFIG.columnaColor esté escrito exactamente igual, ` +
+                    `y (2) que estés usando la hoja correcta en KARDEX_CONFIG.hoja (hoja actual: "${nombreHoja}").`
+                );
+                kardexColorDiagnostico = { encontrada: false, hoja: nombreHoja, columnasDisponibles: encabezados };
+            } else {
+                kardexColorDiagnostico = { encontrada: true, hoja: nombreHoja, columnasDisponibles: encabezados };
+            }
+
+            if (!colCodigo || !colStock) { stockKardex = {}; coloresPorProducto = {}; return; }
+
+            // Un mismo código puede aparecer varias veces (una fila por color); se SUMA el stock
+            // de todas sus filas para el total del producto, y se arma además el detalle por color.
             const nuevoStock = {};
+            const nuevoColores = {};
             filas.forEach(fila => {
                 const codigo = String(fila[colCodigo]).trim();
+                if (!codigo) return;
                 const cantidad = parseFloat(fila[colStock]);
-                if (codigo) nuevoStock[codigo] = isNaN(cantidad) ? 0 : cantidad;
+                const cantidadValida = isNaN(cantidad) ? 0 : cantidad;
+
+                nuevoStock[codigo] = (nuevoStock[codigo] || 0) + cantidadValida;
+
+                if (colColor) {
+                    const nombreColor = String(fila[colColor] || '').trim();
+                    if (nombreColor) {
+                        if (!nuevoColores[codigo]) nuevoColores[codigo] = [];
+                        const existente = nuevoColores[codigo].find(c => c.color.toLowerCase() === nombreColor.toLowerCase());
+                        if (existente) {
+                            existente.saldo += cantidadValida; // mismo código+color repetido: se suma
+                        } else {
+                            nuevoColores[codigo].push({ color: nombreColor, saldo: cantidadValida });
+                        }
+                    }
+                }
             });
             stockKardex = nuevoStock;
+            coloresPorProducto = nuevoColores;
         }
 
         function cargarKardexDesdeCache() {
@@ -3749,7 +4342,9 @@ function mostrarApp() {
                     kardexNombresHojas = data.nombresHojas || [];
                     stockKardex = data.stock || {};
                     kardexUltimaActualizacion = data.fecha ? new Date(data.fecha) : null;
+                    construirStockDesdeHojas(); // también arma coloresPorProducto a partir de los datos cacheados
                     actualizarEtiquetaStockHeader();
+                    actualizarAvisoColorKardex();
                     poblarSelectorHojas();
                 }
             } catch (e) { console.error('Error al leer cache de Kardex:', e); }
@@ -3760,6 +4355,20 @@ function mostrarApp() {
             if (el && kardexUltimaActualizacion) {
                 el.textContent = `Última actualización: ${kardexUltimaActualizacion.toLocaleString('es-PE')}`;
             }
+        }
+
+        // Muestra un aviso visible (sin necesidad de abrir la consola) si la columna de color
+        // configurada no se encontró en la hoja del Kardex que se está usando.
+        function actualizarAvisoColorKardex() {
+            const el = document.getElementById('kardexColorWarning');
+            if (!el) return;
+            if (!kardexColorDiagnostico || kardexColorDiagnostico.encontrada) {
+                el.style.display = 'none';
+                return;
+            }
+            el.style.display = 'block';
+            el.innerHTML = `⚠️ No se encontró la columna de color <strong>"${KARDEX_CONFIG.columnaColor}"</strong> en la hoja "<strong>${kardexColorDiagnostico.hoja}</strong>".<br>
+                Columnas disponibles ahí: ${kardexColorDiagnostico.columnasDisponibles.join(' · ')}`;
         }
 
         // Devuelve la cantidad en stock del producto, o null si el código no está en el Kardex
@@ -3809,10 +4418,11 @@ function mostrarApp() {
             const columnas = Object.keys(filas[0]);
             thead.innerHTML = columnas.map(c => `<th>${c}</th>`).join('');
 
-            const filtro = (document.getElementById('kardexSearchInput')?.value || '').toLowerCase().trim();
-            const filtradas = !filtro ? filas : filas.filter(fila =>
-                columnas.some(c => String(fila[c]).toLowerCase().includes(filtro))
-            );
+const filtro = (document.getElementById('kardexSearchInput')?.value || '').toLowerCase().trim();
+const palabras = filtro.split(/\s+/).filter(Boolean);
+const filtradas = palabras.length === 0 ? filas : filas.filter(fila =>
+    palabras.every(palabra => columnas.some(c => String(fila[c]).toLowerCase().includes(palabra)))
+);
 
             document.getElementById('kardexCount').textContent = filtradas.length;
 
@@ -4502,7 +5112,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
         // Guarda, por tipo de documento, el correlativo y el objectId del registro que se está
         // armando ahora mismo — así, si se regenera la misma cotización, se reutiliza el mismo
         // número y se actualiza el mismo registro en vez de crear uno nuevo.
-        let registroEnCurso = { cotizacion: null, orden_compra: null };
+        let registroEnCurso = { cotizacion: null, orden_compra: null, despacho: null };
         let productoSeleccionado = null;
         let sucursalSeleccionada = null;
         let tabActual = 'cotizar';
@@ -4617,7 +5227,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                     if (diferencia < 24) {
                         productosEnTabla = (estado.productos || []).map(migrarProductoLegacy);
                         sucursalSeleccionada = estado.sucursal || null;
-                        registroEnCurso = estado.registroEnCurso || { cotizacion: null, orden_compra: null };
+                        registroEnCurso = Object.assign({ cotizacion: null, orden_compra: null, despacho: null }, estado.registroEnCurso || {});
                         if (estado.productosDB) {
                             productosDB = estado.productosDB.map(migrarProductoLegacy);
                         }
@@ -4656,8 +5266,9 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 renderSucursales();
                 updateSucursalStats();
             } else if (tab === 'productos') {
+                renderProductosVistaRapida();
+            } else if (tab === 'ajustes') {
                 renderProductList();
-            } else if (tab === 'gestionsucursales') {
                 renderSucursalList();
             } else if (tab === 'historial') {
                 renderHistorial();
@@ -4680,9 +5291,14 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
         const autocompleteDropdown = document.getElementById('autocompleteDropdown');
         const btnAdd = document.getElementById('btnAdd');
 
+        // Quita acentos y pasa a minúsculas, para comparar texto sin importar tildes/mayúsculas
+        function normalizarTexto(texto) {
+            return String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+
         searchInput.addEventListener('input', function() {
-            const query = this.value.trim().toLowerCase();
-            
+            const query = normalizarTexto(this.value.trim());
+
             if (query.length < 2) {
                 autocompleteDropdown.style.display = 'none';
                 productoSeleccionado = null;
@@ -4691,10 +5307,21 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 return;
             }
 
-            const resultados = productosDB.filter(producto => 
-                producto.nombre.toLowerCase().includes(query) ||
-                producto.codigo.toLowerCase().includes(query)
-            );
+            // Búsqueda inteligente: separa lo escrito en palabras y exige que TODAS calcen en
+            // algún lugar del producto (nombre, código, o algún color que tenga en el Kardex),
+            // sin importar el orden ni mayúsculas/acentos. Ej: "toalla verde" encuentra toallas
+            // que tengan un color verde disponible, aunque "verde" no esté en el nombre.
+            const palabras = query.split(/\s+/).filter(Boolean);
+            const resultados = productosDB.filter(producto => {
+                const nombreNorm = normalizarTexto(producto.nombre);
+                const codigoNorm = normalizarTexto(producto.codigo);
+                const coloresNorm = (coloresPorProducto[producto.codigo] || []).map(c => normalizarTexto(c.color));
+                return palabras.every(palabra =>
+                    nombreNorm.includes(palabra) ||
+                    codigoNorm.includes(palabra) ||
+                    coloresNorm.some(c => c.includes(palabra))
+                );
+            });
 
             if (resultados.length > 0) {
                 autocompleteDropdown.innerHTML = resultados.map(producto => `
@@ -4706,6 +5333,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                             <span class="price-tag price-mayor">${producto.tipoMayor === 'paquete' ? 'Paquete' : 'Mayor'}: ${mostrarConIGV ? `S/ ${calcularPrecioConIGV(producto.precioMayor).toFixed(2)}` : `S/ ${producto.precioMayor.toFixed(2)}`}</span>
                             <span style="margin-left: 10px; color: #a0aec0;">${producto.codigo}</span>
                         </div>
+                        ${(coloresPorProducto[producto.codigo]?.length) ? `<div style="margin-top:5px;">${generarCirculosColor(producto.codigo, 14)}</div>` : ''}
                     </div>
                 `).join('');
                 autocompleteDropdown.style.display = 'block';
@@ -4719,6 +5347,8 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                         btnAdd.disabled = false;
                         // Mostrar fila de extras
                         document.getElementById('addExtrasRow').classList.add('visible');
+                        document.getElementById('inputColor').value = '';
+                        renderChipsColorAgregar(codigo);
                         document.getElementById('inputColor').focus();
                     });
                 });
@@ -4993,10 +5623,10 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 document.getElementById('montoAdelanto').value = '';
                 document.getElementById('saldoPendienteLabel').textContent = '';
                 document.getElementById('pagoResumen').textContent = '';
-                // La próxima vez que se genere un documento, se pedirá un número correlativo nuevo
-                const tipodocActual = document.getElementById('tipoDocumento').value;
-                const tipoContadorActual = tipodocActual === 'ORDEN DE COMPRA' ? 'orden_compra' : 'cotizacion';
-                registroEnCurso[tipoContadorActual] = null;
+                // "Limpiar" siempre marca el inicio de una transacción nueva: la próxima vez que se
+                // genere CUALQUIER documento (Cotización, Orden de Compra o Despacho) se pedirá un
+                // número correlativo nuevo, sin importar cuál esté seleccionado en el momento.
+                registroEnCurso = { cotizacion: null, orden_compra: null, despacho: null };
                 renderTable();
                 const sucSel = document.getElementById('sucursalSeleccionada');
                 if (sucSel) sucSel.style.display = 'none';
@@ -5026,6 +5656,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             productosDB.push(crearProducto({ codigo, nombre, precioUnd: menor, precioMayor: mayor }));
             guardarEstado();
             renderProductList();
+            renderProductosVistaRapida();
             
             document.getElementById('newProductForm').reset();
             mostrarNotificacion('✅ Producto agregado correctamente', 'success');
@@ -5069,6 +5700,48 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                     </td>
                 </tr>
             `).join('');
+        }
+
+        // Vista rápida de SOLO LECTURA para la pestaña "Productos": precio, stock total
+        // (sumando todos los colores) y los colores disponibles como círculos, con el
+        // buscador inteligente (nombre, código o color, sin acentos, por palabras).
+        function renderProductosVistaRapida() {
+            const tbody = document.getElementById('productListBodyRapido');
+            if (!tbody) return;
+
+            const query = normalizarTexto((document.getElementById('searchProductosRapido')?.value || '').trim());
+            const palabras = query.split(/\s+/).filter(Boolean);
+
+            const productosFiltrados = productosDB.filter(producto => {
+                if (palabras.length === 0) return true;
+                const nombreNorm = normalizarTexto(producto.nombre);
+                const codigoNorm = normalizarTexto(producto.codigo);
+                const coloresNorm = (coloresPorProducto[producto.codigo] || []).map(c => normalizarTexto(c.color));
+                return palabras.every(palabra =>
+                    nombreNorm.includes(palabra) || codigoNorm.includes(palabra) || coloresNorm.some(c => c.includes(palabra))
+                );
+            });
+
+            document.getElementById('productCountRapido').textContent = productosFiltrados.length;
+
+            if (productosFiltrados.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#a0aec0;padding:24px;">Sin resultados para tu búsqueda.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = productosFiltrados.map(producto => {
+                const stockTotal = obtenerStock(producto.codigo);
+                return `
+                    <tr>
+                        <td class="codigo-cell">${producto.codigo}</td>
+                        <td class="producto-cell">${producto.nombre}</td>
+                        <td class="precio-cell">${mostrarConIGV ? `S/ ${calcularPrecioConIGV(producto.precioUnd).toFixed(2)}` : `S/ ${producto.precioUnd.toFixed(2)}`}</td>
+                        <td class="precio-cell">${mostrarConIGV ? `S/ ${calcularPrecioConIGV(producto.precioMayor).toFixed(2)}` : `S/ ${producto.precioMayor.toFixed(2)}`}</td>
+                        <td style="text-align:center;font-weight:700;color:${stockTotal === null ? '#a0aec0' : (stockTotal > 0 ? '#22543d' : '#c53030')};">${stockTotal === null ? '—' : stockTotal}</td>
+                        <td>${generarCirculosColor(producto.codigo, 20)}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         function toggleCamposEscalonado() {
@@ -5154,6 +5827,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             renderTable();
             closeEditProductoModal();
             guardarEstado();
+            renderProductosVistaRapida();
             mostrarNotificacion('✅ Producto actualizado', 'success');
         });
 
@@ -5162,6 +5836,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 productosDB.splice(index, 1);
                 guardarEstado();
                 renderProductList();
+                renderProductosVistaRapida();
                 mostrarNotificacion('🗑️ Producto eliminado', 'success');
             }
         }
@@ -5382,7 +6057,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
         // Ej: cotizacion_fabexsa_15-07-2026_14-30.png
         function generarNombreArchivo(extension) {
             const tipoDocSelect = document.getElementById('tipoDocumento');
-            const tipoDoc = (tipoDocSelect && tipoDocSelect.value === 'ORDEN DE COMPRA') ? 'orden_compra' : 'cotizacion';
+            const tipoDoc = obtenerTipoContador(tipoDocSelect ? tipoDocSelect.value : '');
             const empresaNombre = (typeof empresaActiva !== 'undefined' && empresaActiva === 'confortline') ? 'confortline' : 'fabexsa';
 
             const ahora = new Date();
@@ -5674,14 +6349,15 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
 
             // TIPO DE DOCUMENTO
             const tipodoc = document.getElementById('tipoDocumento').value;
-            const tipoContador = tipodoc === 'ORDEN DE COMPRA' ? 'orden_compra' : 'cotizacion';
-            const tituloDoc = tipodoc === 'ORDEN DE COMPRA' ? 'ORDEN DE COMPRA' : 'COTIZACIÓN';
+            const tipoContador = obtenerTipoContador(tipodoc);
+            const esDespacho = tipodoc === 'DESPACHO';
+            const tituloDoc = tipodoc === 'ORDEN DE COMPRA' ? 'ORDEN DE COMPRA' : (esDespacho ? 'GUÍA DE DESPACHO' : 'COTIZACIÓN');
             document.getElementById('printTipoDoc').textContent = tituloDoc;
             document.getElementById('printDate').textContent = `Fecha: ${fechaStr}`;
 
             let numeroCorrelativo = null;
             try {
-                numeroCorrelativo = await asegurarCorrelativo(tipoContador);
+                numeroCorrelativo = await asegurarCorrelativoParaDocumento(tipodoc);
             } catch (e) {
                 console.error('No se pudo obtener el número correlativo:', e);
             }
@@ -5691,7 +6367,15 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             document.getElementById('printNumeroCot').textContent = numDoc;
             // "Válido 7 días" solo en cotización
             const validezEl = document.getElementById('printValidezBadge');
-            if (validezEl) validezEl.style.display = tipodoc === 'ORDEN DE COMPRA' ? 'none' : 'inline-block';
+            if (validezEl) validezEl.style.display = (tipodoc === 'cotizacion') ? 'inline-block' : 'none';
+
+            // DESPACHO: se omiten precios, totales y datos bancarios (solo cliente, sucursal y productos/cantidad)
+            const colPrecio = document.getElementById('thPrecioUnitCol');
+            const colTotal = document.getElementById('thTotalCol');
+            if (colPrecio) colPrecio.style.display = esDespacho ? 'none' : '';
+            if (colTotal) colTotal.style.display = esDespacho ? 'none' : '';
+            const bloqueTotalesBanco = document.getElementById('printTotalesBancoGrid');
+            if (bloqueTotalesBanco) bloqueTotalesBanco.style.display = esDespacho ? 'none' : 'grid';
 
             // CLIENTE en bloque compacto
             const cliente = getClienteData();
@@ -5779,8 +6463,8 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                         <td style="font-size:0.82em;color:#718096;font-family:monospace;">${producto.codigo}</td>
                         <td style="font-size:0.88em;">${producto.nombre}${colorInfo}</td>
                         <td style="text-align:center;font-size:0.88em;">${cantidad}</td>
-                        <td style="text-align:right;font-size:0.85em;">S/ ${precioMostrar.toFixed(2)}${descInfo}<br><span style="font-size:0.8em;color:#a0aec0;">${tipoPrecio}</span></td>
-                        <td style="text-align:right;font-weight:700;font-size:0.9em;">S/ ${subtotalMostrar.toFixed(2)}</td>
+                        ${esDespacho ? '' : `<td style="text-align:right;font-size:0.85em;">S/ ${precioMostrar.toFixed(2)}${descInfo}<br><span style="font-size:0.8em;color:#a0aec0;">${tipoPrecio}</span></td>`}
+                        ${esDespacho ? '' : `<td style="text-align:right;font-weight:700;font-size:0.9em;">S/ ${subtotalMostrar.toFixed(2)}</td>`}
                     </tr>
                 `;
             }).join('');
@@ -5854,6 +6538,22 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             icon.classList.toggle('open');
         }
 
+        function toggleAgregarProductoPanel() {
+            const body = document.getElementById('agregarProductoPanelBody');
+            const icon = document.getElementById('agregarProductoToggleIcon');
+            body.classList.toggle('open');
+            icon.classList.toggle('open');
+        }
+
+        function cambiarAjustesSubTab(sub) {
+            document.querySelectorAll('.ajustes-subtab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('ajustesSubBtn_' + sub).classList.add('active');
+            document.querySelectorAll('.ajustes-subtab-content').forEach(c => c.style.display = 'none');
+            document.getElementById('ajustesSub-' + sub).style.display = 'block';
+            if (sub === 'productos') renderProductList();
+            if (sub === 'sucursales') renderSucursalList();
+        }
+
         function actualizarResumenCliente() {
             const nombre = document.getElementById('clienteNombre').value.trim();
             const empresa = document.getElementById('clienteEmpresa').value.trim();
@@ -5896,6 +6596,10 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
 
         function setColor(color) {
             document.getElementById('inputColor').value = color;
+            document.querySelectorAll('.color-circulo-chip').forEach(chip => {
+                chip.classList.toggle('seleccionado', chip.dataset.color === color);
+            });
+            actualizarDisponibleColorSeleccionado(color);
         }
 
         // ============================================
@@ -6023,15 +6727,40 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
         const CLASE_COTIZACIONES = 'Cotizaciones';
 
         // ============================================
-        // CORRELATIVO (Cotización y Orden de Compra tienen numeración independiente)
+        // CORRELATIVO (Cotización y Orden de Compra tienen numeración independiente;
+        // Despacho no tiene numeración propia, toma prestado el número de una de las dos —
+        // ver CORRELATIVO_ASOCIADO_DESPACHO más abajo)
         // ============================================
-        // IMPORTANTE: antes de usar esto, crea en Back4App la clase "Contadores" con 2 filas:
+        // IMPORTANTE: antes de usar esto, crea en Back4App la clase "Contadores" con las filas:
         //   { tipo: "cotizacion",   siguienteNumero: 449 }
         //   { tipo: "orden_compra", siguienteNumero: 449 }
         // (449 porque el primer número que se entrega es siguienteNumero + 1, o sea 450)
         // Si no las creas tú, el código las crea solo la primera vez que se necesiten.
         const CLASE_CONTADORES = 'Contadores';
         const NUMERO_INICIAL_CORRELATIVO = 450;
+
+        // Traduce el valor del selector "tipoDocumento" al nombre de la secuencia de numeración.
+        // Los 3 tipos tienen numeración independiente entre sí.
+        function obtenerTipoContador(tipodoc) {
+            if (tipodoc === 'ORDEN DE COMPRA') return 'orden_compra';
+            if (tipodoc === 'DESPACHO') return 'despacho';
+            return 'cotizacion';
+        }
+
+        // ██████████████████████████████████████████████████████████████████
+        // ██  CONFIGURACIÓN: ¿A QUÉ CORRELATIVO SE ASOCIA LA GUÍA DE DESPACHO?  ██
+        // ██████████████████████████████████████████████████████████████████
+        // La Guía de Despacho NO tiene numeración propia: en la papeleta impresa se
+        // muestra el MISMO número que la Cotización o la Orden de Compra (según cuál
+        // corresponda). Cambia el valor de la siguiente línea según cómo trabajen en la
+        // práctica en tu equipo:
+        //
+        //   'orden_compra' → el despacho muestra el mismo N° que la Orden de Compra
+        //                     (recomendado: es el documento que confirma el depósito real)
+        //   'cotizacion'   → el despacho muestra el mismo N° que la Cotización
+        //
+        const CORRELATIVO_ASOCIADO_DESPACHO = 'orden_compra';
+        // ██████████████████████████████████████████████████████████████████
 
         // Incrementa el contador de forma atómica en el servidor y devuelve el número ya asignado.
         // Como el incremento ocurre en la base de datos (no en el navegador), nunca se reparte
@@ -6086,6 +6815,23 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             return numero;
         }
 
+        // Resuelve el número correlativo que debe mostrarse/guardarse para el documento actual.
+        // - Cotización y Orden de Compra: cada una pide su propio número (numeración independiente).
+        // - Despacho: NO pide un número nuevo; toma prestado el de CORRELATIVO_ASOCIADO_DESPACHO
+        //   (lo crea si esa transacción todavía no tiene uno asignado en esta sesión). El despacho
+        //   mantiene su PROPIO registro en el historial (con su propio objectId), solo el NÚMERO
+        //   que se muestra es compartido.
+        async function asegurarCorrelativoParaDocumento(tipodoc) {
+            if (tipodoc === 'DESPACHO') {
+                const numeroPrestado = await asegurarCorrelativo(CORRELATIVO_ASOCIADO_DESPACHO);
+                if (!registroEnCurso.despacho) registroEnCurso.despacho = { objectId: null, correlativo: null };
+                registroEnCurso.despacho.correlativo = numeroPrestado;
+                guardarEstado();
+                return numeroPrestado;
+            }
+            return asegurarCorrelativo(obtenerTipoContador(tipodoc));
+        }
+
         let historialCache = [];
         let verTodasLasCotizaciones = false; // solo aplica si el usuario es "master"
 
@@ -6103,11 +6849,11 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             const totalFinal = mostrarConIGV ? calcularPrecioConIGV(subtotal - descMonto) : (subtotal - descMonto);
 
             const tipodoc = document.getElementById('tipoDocumento').value;
-            const tipoContador = tipodoc === 'ORDEN DE COMPRA' ? 'orden_compra' : 'cotizacion';
+            const tipoContador = obtenerTipoContador(tipodoc);
 
             let correlativo;
             try {
-                correlativo = await asegurarCorrelativo(tipoContador);
+                correlativo = await asegurarCorrelativoParaDocumento(tipodoc);
             } catch (e) {
                 console.error('No se pudo obtener el correlativo:', e);
                 mostrarNotificacion('⚠️ No se pudo generar el número correlativo: ' + e.message, 'warning');
@@ -6133,6 +6879,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
 
             try {
                 const registroExistente = registroEnCurso[tipoContador];
+                const esPrimerGuardado = !registroExistente?.objectId; // false = ya existía, es una regeneración
                 let resp;
                 if (registroExistente?.objectId) {
                     // Ya existe un registro para esta misma cotización: se actualiza en vez de duplicar
@@ -6153,8 +6900,23 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 registroEnCurso[tipoContador] = { objectId: registroExistente?.objectId || data.objectId, correlativo };
                 guardarEstado();
                 renderHistorial();
-                const etiquetaDoc = tipoContador === 'orden_compra' ? 'Orden de Compra' : 'Cotización';
+                const etiquetaDoc = tipoContador === 'orden_compra' ? 'Orden de Compra' : (tipoContador === 'despacho' ? 'Despacho' : 'Cotización');
                 mostrarNotificacion(`✅ ${etiquetaDoc} N° ${String(correlativo).padStart(6, '0')} guardada en la nube`, 'success');
+
+                // Descuento de stock en el Kardex: SOLO la primera vez que se guarda una Orden de
+                // Compra (crear registro nuevo). Si vuelves a generar la imagen/PDF de la MISMA
+                // orden para corregir el nombre, agregar un adelanto, etc., NO se descuenta de nuevo.
+                if (tipoContador === 'orden_compra' && esPrimerGuardado) {
+                    try {
+                        const itemsDescuento = productosEnTabla.map(p => ({ codigo: p.codigo, cantidad: p.cantidad }));
+                        await descontarStockKardexDropbox(itemsDescuento);
+                        mostrarNotificacion('📉 Stock descontado en el Kardex', 'success');
+                        cargarKardex(false); // refresca los badges de stock con el nuevo saldo
+                    } catch (eKardex) {
+                        console.error('Error al descontar stock del Kardex:', eKardex);
+                        mostrarNotificacion('⚠️ La orden se guardó, pero no se pudo descontar el Kardex: ' + eKardex.message, 'warning');
+                    }
+                }
             } catch (e) {
                 console.error('Error al guardar en historial:', e);
                 mostrarNotificacion('⚠️ No se pudo guardar en la nube: ' + e.message, 'warning');
@@ -6346,14 +7108,18 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 const fecha = new Date(entry.createdAt).toLocaleDateString('es-PE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
                 const numProductos = entry.productos.length;
                 const totalUnid = entry.productos.reduce((a, p) => a + p.cantidad, 0);
-                const esOrdenCompra = entry.tipoDocumento === 'orden_compra';
+                const infoTipoDoc = {
+                    orden_compra: { color: '#9a3412', fondo: '#fed7aa', etiqueta: '📦 ORDEN DE COMPRA' },
+                    despacho:     { color: '#276749', fondo: '#c6f6d5', etiqueta: '🚚 DESPACHO' },
+                    cotizacion:   { color: '#3730a3', fondo: '#e0e7ff', etiqueta: '📋 COTIZACIÓN' }
+                }[entry.tipoDocumento] || { color: '#3730a3', fondo: '#e0e7ff', etiqueta: '📋 COTIZACIÓN' };
                 const correlativoTexto = entry.correlativo ? `N° ${String(entry.correlativo).padStart(6, '0')}` : 'N° —';
                 return `
                     <div class="historial-card">
                         <div class="historial-card-left">
                             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
-                                <span style="font-weight:800;font-size:0.95em;padding:2px 10px;border-radius:6px;background:${esOrdenCompra ? '#fed7aa' : '#e0e7ff'};color:${esOrdenCompra ? '#9a3412' : '#3730a3'};">${correlativoTexto}</span>
-                                <span style="font-size:0.72em;font-weight:700;color:${esOrdenCompra ? '#9a3412' : '#3730a3'};">${esOrdenCompra ? '📦 ORDEN DE COMPRA' : '📋 COTIZACIÓN'}</span>
+                                <span style="font-weight:800;font-size:0.95em;padding:2px 10px;border-radius:6px;background:${infoTipoDoc.fondo};color:${infoTipoDoc.color};">${correlativoTexto}</span>
+                                <span style="font-size:0.72em;font-weight:700;color:${infoTipoDoc.color};">${infoTipoDoc.etiqueta}</span>
                                 ${mostrarVendedorPorTarjeta ? `<span style="font-size:0.72em;font-weight:700;color:#4a5568;background:#edf2f7;padding:2px 8px;border-radius:6px;">🧑‍💼 ${entry.usuarioNombre || entry.usuario || 'Desconocido'}</span>` : ''}
                             </div>
                             <div class="historial-card-title">👤 ${entry.cliente}${entry.empresaCliente ? ' — ' + entry.empresaCliente : ''}</div>
@@ -6394,8 +7160,9 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             document.getElementById('clienteTelefono').value = entry.telefono || '';
 
             // Restaurar tipo de documento y continuar con el MISMO correlativo (no se pide uno nuevo)
-            const tipoContador = entry.tipoDocumento === 'orden_compra' ? 'orden_compra' : 'cotizacion';
-            document.getElementById('tipoDocumento').value = tipoContador === 'orden_compra' ? 'ORDEN DE COMPRA' : 'cotizacion';
+            const tipoContador = entry.tipoDocumento === 'orden_compra' ? 'orden_compra' : (entry.tipoDocumento === 'despacho' ? 'despacho' : 'cotizacion');
+            const valorSelect = tipoContador === 'orden_compra' ? 'ORDEN DE COMPRA' : (tipoContador === 'despacho' ? 'DESPACHO' : 'cotizacion');
+            document.getElementById('tipoDocumento').value = valorSelect;
             registroEnCurso[tipoContador] = { objectId: entry.objectId, correlativo: entry.correlativo || null };
 
             actualizarResumenCliente();
@@ -6681,6 +7448,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             cargarPreferencias(); // Cargar preferencias de IGV y Forzar Por Mayor
             renderSucursales();
             renderProductList();
+            renderProductosVistaRapida();
             renderSucursalList();
             const empresaSelect = document.getElementById('empresaActivaSelect');
             if (empresaSelect) empresaSelect.value = empresaActiva;
@@ -6692,6 +7460,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             migrarHistorialLocalSiExiste();
             aplicarVisibilidadRecuperarHistorial();
             intentarRecuperarCarpetaFija();
+            iniciarRevisionDeVersion();
             console.log('✅ Cotizador cargado correctamente');
             console.log(`📦 ${productosDB.length} productos disponibles`);
             console.log(`🚚 ${sucursalesDB.length} sucursales disponibles`);

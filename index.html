@@ -9,6 +9,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- ExcelJS: se usa SOLO para el descuento de stock por Dropbox, porque a diferencia de
+         SheetJS SÍ conserva colores, bordes y formato del Excel al modificar y volver a guardar. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -2314,7 +2317,7 @@
                 <button type="button" onclick="cerrarSesion()">Salir</button>
             </div>
             <h1>🏨 Cotizador Profesional</h1>
-            <div class="subtitle">Sistema Integrado de Cotización y Envíos a Provincias · v5.1 — Historial · Descuentos · Multi-color · Clientes DB</div>
+            <div class="subtitle">Sistema Integrado de Cotización y Envíos a Provincias · v5.7 — Historial · Descuentos · Multi-color · Clientes DB</div>
         </div>
 
 
@@ -4149,6 +4152,9 @@ function mostrarApp() {
 
         // Descarga el Excel del Kardex directo desde Dropbox (con permisos de escritura) y
         // devuelve el workbook ya parseado junto con el "rev" (versión) que tenía en ese momento.
+        // Se usa ExcelJS (no SheetJS) porque ExcelJS conserva colores, bordes, anchos de columna
+        // y demás formato del archivo original al modificar solo algunas celdas y volver a guardar;
+        // SheetJS (usado en el resto del cotizador para SOLO LEER) descarta ese formato al reescribir.
         async function descargarKardexParaEscritura(accessToken) {
             const ruta = await obtenerRutaArchivoKardex(accessToken);
             const resp = await fetch('https://content.dropboxapi.com/2/files/download', {
@@ -4162,7 +4168,8 @@ function mostrarApp() {
             const metaHeader = resp.headers.get('dropbox-api-result');
             const meta = metaHeader ? JSON.parse(metaHeader) : {};
             const buffer = await resp.arrayBuffer();
-            const workbook = XLSX.read(buffer, { type: 'array' });
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(buffer);
             return { workbook, rev: meta.rev };
         }
 
@@ -4170,7 +4177,7 @@ function mostrarApp() {
         // (usa el "rev" de la descarga como candado). Si alguien más escribió primero, Dropbox
         // rechaza la subida (409) y hay que reintentar con datos frescos.
         async function subirKardexConCandado(accessToken, workbook, revEsperada) {
-            const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+            const wbout = await workbook.xlsx.writeBuffer(); // conserva todo el formato, solo cambian los valores tocados
             const ruta = await obtenerRutaArchivoKardex(accessToken);
             const resp = await fetch('https://content.dropboxapi.com/2/files/upload', {
                 method: 'POST',
@@ -4190,44 +4197,144 @@ function mostrarApp() {
             return true;
         }
 
-        // Descuenta del Kardex las cantidades de una Orden de Compra. Reintenta hasta 5 veces si
-        // detecta que alguien más modificó el archivo justo en el mismo momento (evita pisar cambios).
-        async function descontarStockKardexDropbox(items) {
+        // Ajusta el Kardex según una lista de diferencias (una Orden de Compra nueva o editada).
+        // Cada item = { codigo, color, cantidad }. cantidad POSITIVA = se descuenta del stock
+        // (venta/aumento); cantidad NEGATIVA = se devuelve al stock (producto quitado o reducido
+        // en una edición). Modifica ÚNICAMENTE el valor numérico de la celda de stock de cada
+        // producto (no reconstruye la hoja), así se conserva el diseño original (colores, orden de
+        // columnas, anchos, etc.). Matchea por código+color cuando el Kardex tiene varias filas
+        // (variantes) para un mismo código, para no tocar el stock del color equivocado. Reintenta
+        // hasta 5 veces si detecta que alguien más modificó el archivo justo en el mismo momento.
+        async function ajustarStockKardexDropbox(items) {
             if (!items.length) return;
             const accessToken = await obtenerAccessTokenDropbox();
 
             for (let intento = 1; intento <= 5; intento++) {
                 const { workbook, rev } = await descargarKardexParaEscritura(accessToken);
-                const nombreHoja = resolverNombreHojaKardex(workbook.SheetNames);
-                const hoja = workbook.Sheets[nombreHoja];
+                const nombresHojas = workbook.worksheets.map(ws => ws.name);
+                const nombreHoja = resolverNombreHojaKardex(nombresHojas);
+                const hoja = workbook.getWorksheet(nombreHoja);
                 if (!hoja) throw new Error('No se encontró la hoja del Kardex configurada en KARDEX_CONFIG');
 
-                const filas = XLSX.utils.sheet_to_json(hoja, { defval: '' });
-                const columnas = filas.length ? Object.keys(filas[0]) : [];
-                const colCodigo = KARDEX_CONFIG.columnaCodigo || columnas.find(c => /c[oó]digo|articulo|sku/i.test(c));
-                const colStock = KARDEX_CONFIG.columnaStock || columnas.find(c => /stock|saldo|cantidad|existenc/i.test(c));
-                if (!colCodigo || !colStock) throw new Error('No se detectaron las columnas de código/stock del Kardex');
+                // Encabezados de la fila 1, para ubicar las columnas de código, stock y color por su
+                // texto (sin tocar ninguna celda todavía).
+                const encabezados = [];
+                hoja.getRow(1).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    encabezados[colNumber] = (cell.value ?? '').toString().trim();
+                });
+                const encontrarColumna = (nombreExacto, regex) => {
+                    if (nombreExacto) {
+                        const idx = encabezados.findIndex(h => h === nombreExacto);
+                        if (idx > -1) return idx;
+                    }
+                    return encabezados.findIndex(h => h && regex.test(h));
+                };
+                const colCodigo = encontrarColumna(KARDEX_CONFIG.columnaCodigo, /c[oó]digo|articulo|sku/i);
+                const colStock = encontrarColumna(KARDEX_CONFIG.columnaStock, /stock|saldo|cantidad|existenc/i);
+                if (colCodigo < 1 || colStock < 1) throw new Error('No se detectaron las columnas de código/stock del Kardex');
+
+                // Columna de color: mismo criterio (exacto, tolerante a mayúsculas/acentos/espacios)
+                // que usa construirStockDesdeHojas() para mostrar el stock por color en el cotizador.
+                const colColorNormalizado = normalizarTexto(KARDEX_CONFIG.columnaColor || '').replace(/\s+/g, ' ').trim();
+                const colColor = colColorNormalizado
+                    ? encabezados.findIndex(h => h && normalizarTexto(h).replace(/\s+/g, ' ').trim() === colColorNormalizado)
+                    : -1;
+
+                // Un mismo código puede repetirse en varias filas (una por color). Se arma un índice
+                // código -> [ {fila, color} ] para no recorrer toda la hoja por cada producto y para
+                // poder matchear por código+color cuando corresponda.
+                const filasPorCodigo = {};
+                for (let f = 2; f <= hoja.rowCount; f++) {
+                    const fila = hoja.getRow(f);
+                    const valorCodigo = fila.getCell(colCodigo).value;
+                    if (valorCodigo === null || valorCodigo === undefined || valorCodigo === '') continue;
+                    const codigo = String(valorCodigo).trim();
+                    const color = colColor > -1 ? String(fila.getCell(colColor).value || '').trim() : '';
+                    if (!filasPorCodigo[codigo]) filasPorCodigo[codigo] = [];
+                    filasPorCodigo[codigo].push({ fila, color });
+                }
 
                 let huboCambios = false;
+                const noEncontrados = [];
                 items.forEach(item => {
-                    const fila = filas.find(f => String(f[colCodigo]).trim() === String(item.codigo).trim());
-                    if (fila) {
-                        const stockActual = parseFloat(fila[colStock]) || 0;
-                        fila[colStock] = Math.max(0, stockActual - item.cantidad);
+                    const candidatas = filasPorCodigo[String(item.codigo).trim()];
+                    if (!candidatas || candidatas.length === 0) { noEncontrados.push(item.codigo); return; }
+
+                    let filaElegida = null;
+                    const colorItem = String(item.color || '').trim();
+
+                    if (candidatas.length === 1) {
+                        // Solo hay una fila para este código en el Kardex: no hay ambigüedad de color.
+                        filaElegida = candidatas[0].fila;
+                    } else if (colColor > -1 && colorItem) {
+                        // Varias filas (varios colores) para el mismo código: hay que acertar la fila
+                        // correcta, si no se le descontaría el stock al color equivocado.
+                        const match = candidatas.find(c => c.color.toLowerCase() === colorItem.toLowerCase());
+                        filaElegida = match ? match.fila : null;
+                        if (!filaElegida) {
+                            console.warn(`⚠️ Kardex: el código ${item.codigo} tiene color "${colorItem}" en la cotización, pero ese color no aparece entre sus filas del Kardex (${candidatas.map(c => c.color).join(', ')}). No se descontó ese ítem.`);
+                            noEncontrados.push(`${item.codigo} (color "${colorItem}")`);
+                        }
+                    } else {
+                        // Varias filas para el mismo código pero no se puede distinguir (el producto no
+                        // trae color en la cotización, o el Kardex no tiene columna de color): mejor no
+                        // adivinar y avisar, en vez de descontarle a una fila al azar.
+                        console.warn(`⚠️ Kardex: el código ${item.codigo} tiene ${candidatas.length} filas (colores) y no se pudo determinar cuál descontar. No se descontó ese ítem.`);
+                        noEncontrados.push(`${item.codigo} (color ambiguo)`);
+                    }
+
+                    if (filaElegida) {
+                        const celdaStock = filaElegida.getCell(colStock);
+                        const stockActual = parseFloat(celdaStock.value) || 0;
+                        celdaStock.value = Math.max(0, stockActual - item.cantidad); // solo el número; el estilo de la celda no se toca
                         huboCambios = true;
                     }
                 });
 
-                if (!huboCambios) return; // ningún producto de la orden existe en el Kardex, nada que tocar
+                if (noEncontrados.length > 0) {
+                    mostrarNotificacion(`⚠️ No se pudo ajustar en el Kardex: ${noEncontrados.join(', ')}`, 'warning');
+                }
 
-                const nuevaHoja = XLSX.utils.json_to_sheet(filas, { header: columnas });
-                workbook.Sheets[nombreHoja] = nuevaHoja;
+                if (!huboCambios) return; // ningún producto de la orden pudo descontarse, nada que subir
 
                 const exito = await subirKardexConCandado(accessToken, workbook, rev);
                 if (exito) return; // listo
                 // si no tuvo éxito, se repite el ciclo: se vuelve a descargar la versión más reciente
             }
             throw new Error('No se pudo actualizar el Kardex después de varios intentos (mucha actividad simultánea)');
+        }
+
+        // Compara lo que ya se había descontado del Kardex la última vez (anteriores) contra lo que
+        // hay AHORA en la tabla (actuales), y devuelve solo las diferencias por código+color:
+        //   - producto nuevo o cantidad aumentada  -> diferencia positiva (hay que descontar más)
+        //   - cantidad reducida o producto quitado -> diferencia negativa (hay que devolver stock)
+        //   - sin cambios -> no aparece en el resultado
+        // Así, al editar una Orden de Compra ya guardada, solo se toca el Kardex por lo que
+        // realmente cambió — no se vuelve a descontar lo que ya estaba.
+        function calcularDiferenciaProductos(anteriores, actuales) {
+            const clave = p => `${String(p.codigo).trim()}||${String(p.color || '').trim().toLowerCase()}`;
+
+            const sumarPorClave = (lista) => {
+                const mapa = {};
+                (lista || []).forEach(p => {
+                    const k = clave(p);
+                    mapa[k] = (mapa[k] || 0) + (parseFloat(p.cantidad) || 0);
+                });
+                return mapa;
+            };
+
+            const mapaAnt = sumarPorClave(anteriores);
+            const mapaAct = sumarPorClave(actuales);
+            const todasLasClaves = new Set([...Object.keys(mapaAnt), ...Object.keys(mapaAct)]);
+
+            const deltas = [];
+            todasLasClaves.forEach(k => {
+                const diferencia = (mapaAct[k] || 0) - (mapaAnt[k] || 0);
+                if (diferencia === 0) return;
+                const origen = (actuales || []).find(p => clave(p) === k) || (anteriores || []).find(p => clave(p) === k);
+                deltas.push({ codigo: origen.codigo, color: origen.color || '', cantidad: diferencia });
+            });
+            return deltas;
         }
 
         async function cargarKardex(mostrarAviso = true) {
@@ -6860,6 +6967,9 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 return;
             }
 
+            const registroExistente = registroEnCurso[tipoContador];
+            const esPrimerGuardado = !registroExistente?.objectId; // false = ya existía, es una regeneración/edición
+
             const entrada = {
                 cliente: cliente.nombre || 'Sin nombre',
                 empresaCliente: cliente.empresa || '',
@@ -6873,13 +6983,19 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 tipoDocumento: tipoContador,
                 correlativo,
                 activo: true,
-                usuario: usuarioActual?.username || '',
-                usuarioNombre: usuarioActual?.nombre || ''
+                // Quién hizo el último cambio, para trazabilidad (siempre se actualiza).
+                ultimaEdicionPor: usuarioActual?.username || '',
+                ultimaEdicionPorNombre: usuarioActual?.nombre || ''
             };
+            // El "dueño" (usuario/usuarioNombre) SOLO se fija al crear el registro. En una edición
+            // no se incluye en el PUT, así Parse deja el valor original intacto — la cotización
+            // sigue apareciendo en el panel de quien la creó, aunque otro usuario la haya editado.
+            if (esPrimerGuardado) {
+                entrada.usuario = usuarioActual?.username || '';
+                entrada.usuarioNombre = usuarioActual?.nombre || '';
+            }
 
             try {
-                const registroExistente = registroEnCurso[tipoContador];
-                const esPrimerGuardado = !registroExistente?.objectId; // false = ya existía, es una regeneración
                 let resp;
                 if (registroExistente?.objectId) {
                     // Ya existe un registro para esta misma cotización: se actualiza en vez de duplicar
@@ -6897,24 +7013,49 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                 }
                 if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err.error || 'HTTP ' + resp.status); }
                 const data = await resp.json();
-                registroEnCurso[tipoContador] = { objectId: registroExistente?.objectId || data.objectId, correlativo };
+                const objectId = registroExistente?.objectId || data.objectId;
+                registroEnCurso[tipoContador] = {
+                    objectId,
+                    correlativo,
+                    productosDescontados: registroExistente?.productosDescontados || []
+                };
                 guardarEstado();
                 renderHistorial();
                 const etiquetaDoc = tipoContador === 'orden_compra' ? 'Orden de Compra' : (tipoContador === 'despacho' ? 'Despacho' : 'Cotización');
                 mostrarNotificacion(`✅ ${etiquetaDoc} N° ${String(correlativo).padStart(6, '0')} guardada en la nube`, 'success');
 
-                // Descuento de stock en el Kardex: SOLO la primera vez que se guarda una Orden de
-                // Compra (crear registro nuevo). Si vuelves a generar la imagen/PDF de la MISMA
-                // orden para corregir el nombre, agregar un adelanto, etc., NO se descuenta de nuevo.
-                if (tipoContador === 'orden_compra' && esPrimerGuardado) {
+                // Ajuste de stock en el Kardex: se compara lo que YA se había descontado (snapshot
+                // guardado la última vez) contra lo que hay AHORA en la tabla, y solo se toca el
+                // Kardex por la diferencia. Así, si se agrega un producto nuevo en una edición, solo
+                // se descuenta ESE producto (no se vuelve a descontar lo que ya estaba), y si se quita
+                // o se reduce algo, esa diferencia se DEVUELVE al Kardex.
+                if (tipoContador === 'orden_compra') {
                     try {
-                        const itemsDescuento = productosEnTabla.map(p => ({ codigo: p.codigo, cantidad: p.cantidad }));
-                        await descontarStockKardexDropbox(itemsDescuento);
-                        mostrarNotificacion('📉 Stock descontado en el Kardex', 'success');
-                        cargarKardex(false); // refresca los badges de stock con el nuevo saldo
+                        const productosActuales = productosEnTabla.map(p => ({ codigo: p.codigo, cantidad: p.cantidad, color: p.color || '' }));
+                        const productosAnteriores = esPrimerGuardado ? [] : (registroExistente?.productosDescontados || []);
+                        const deltas = calcularDiferenciaProductos(productosAnteriores, productosActuales);
+
+                        if (deltas.length > 0) {
+                            await ajustarStockKardexDropbox(deltas);
+                            const huboAumentos = deltas.some(d => d.cantidad > 0);
+                            const huboDevoluciones = deltas.some(d => d.cantidad < 0);
+                            let msg = '📉 Stock descontado en el Kardex';
+                            if (huboAumentos && huboDevoluciones) msg = '📉↩️ Kardex ajustado (productos añadidos y removidos/reducidos)';
+                            else if (huboDevoluciones) msg = '↩️ Kardex actualizado: se devolvió stock de lo removido/reducido';
+                            mostrarNotificacion(msg, 'success');
+                            cargarKardex(false); // refresca los badges de stock con el nuevo saldo
+                        }
+
+                        // Actualiza el snapshot de "lo que ya está descontado" para la próxima edición.
+                        await fetch(`${BACK4APP_CONFIG.serverUrl}/classes/${CLASE_COTIZACIONES}/${objectId}`, {
+                            method: 'PUT',
+                            headers: headersBack4App({ 'X-Parse-Session-Token': usuarioActual?.sessionToken }),
+                            body: JSON.stringify({ productosDescontados: productosActuales })
+                        });
+                        registroEnCurso[tipoContador].productosDescontados = productosActuales;
                     } catch (eKardex) {
-                        console.error('Error al descontar stock del Kardex:', eKardex);
-                        mostrarNotificacion('⚠️ La orden se guardó, pero no se pudo descontar el Kardex: ' + eKardex.message, 'warning');
+                        console.error('Error al ajustar stock del Kardex:', eKardex);
+                        mostrarNotificacion('⚠️ La orden se guardó, pero no se pudo ajustar el Kardex: ' + eKardex.message, 'warning');
                     }
                 }
             } catch (e) {
@@ -7114,6 +7255,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                     cotizacion:   { color: '#3730a3', fondo: '#e0e7ff', etiqueta: '📋 COTIZACIÓN' }
                 }[entry.tipoDocumento] || { color: '#3730a3', fondo: '#e0e7ff', etiqueta: '📋 COTIZACIÓN' };
                 const correlativoTexto = entry.correlativo ? `N° ${String(entry.correlativo).padStart(6, '0')}` : 'N° —';
+                const editadoPorOtro = entry.ultimaEdicionPor && entry.usuario && entry.ultimaEdicionPor !== entry.usuario;
                 return `
                     <div class="historial-card">
                         <div class="historial-card-left">
@@ -7121,6 +7263,7 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
                                 <span style="font-weight:800;font-size:0.95em;padding:2px 10px;border-radius:6px;background:${infoTipoDoc.fondo};color:${infoTipoDoc.color};">${correlativoTexto}</span>
                                 <span style="font-size:0.72em;font-weight:700;color:${infoTipoDoc.color};">${infoTipoDoc.etiqueta}</span>
                                 ${mostrarVendedorPorTarjeta ? `<span style="font-size:0.72em;font-weight:700;color:#4a5568;background:#edf2f7;padding:2px 8px;border-radius:6px;">🧑‍💼 ${entry.usuarioNombre || entry.usuario || 'Desconocido'}</span>` : ''}
+                                ${editadoPorOtro ? `<span style="font-size:0.72em;font-weight:700;color:#975a16;background:#fefcbf;padding:2px 8px;border-radius:6px;" title="Última edición por otro usuario">✏️ editado por ${entry.ultimaEdicionPorNombre || entry.ultimaEdicionPor}</span>` : ''}
                             </div>
                             <div class="historial-card-title">👤 ${entry.cliente}${entry.empresaCliente ? ' — ' + entry.empresaCliente : ''}</div>
                             <div class="historial-card-meta">
@@ -7163,7 +7306,15 @@ crearProducto({ codigo: "GL-003", nombre: "Toalla Gold Label Mano 70x40cm - La B
             const tipoContador = entry.tipoDocumento === 'orden_compra' ? 'orden_compra' : (entry.tipoDocumento === 'despacho' ? 'despacho' : 'cotizacion');
             const valorSelect = tipoContador === 'orden_compra' ? 'ORDEN DE COMPRA' : (tipoContador === 'despacho' ? 'DESPACHO' : 'cotizacion');
             document.getElementById('tipoDocumento').value = valorSelect;
-            registroEnCurso[tipoContador] = { objectId: entry.objectId, correlativo: entry.correlativo || null };
+            // productosDescontados = snapshot de lo que YA se descontó del Kardex la última vez.
+            // Si el registro es de antes de este cambio (no tiene ese campo todavía), se asume que
+            // todo lo que tiene "productos" ya fue descontado (mejor suposición posible para no
+            // duplicar ni perder el ajuste en la primera edición de un registro viejo).
+            registroEnCurso[tipoContador] = {
+                objectId: entry.objectId,
+                correlativo: entry.correlativo || null,
+                productosDescontados: entry.productosDescontados || entry.productos || []
+            };
 
             actualizarResumenCliente();
             renderTable();
